@@ -2,6 +2,7 @@ import numpy as np
 from matplotlib import animation
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
+from threadpoolctl import threadpool_limits 
 
 class Parameter:
 	def __init__(self, name, val):
@@ -16,7 +17,7 @@ def Laplace1D(x, dx, neumann=False):
 	return laplace
 
 class Equation:
-	def __init__(self, name, dim, parameters, N=101, isComplex=False, img=None):
+	def __init__(self, name, dim, parameters, N=100, isComplex=False, img=None):
 		self.name = name
 		self.dim = dim
 		self.img = img
@@ -54,17 +55,18 @@ class Equation:
 
 	def solve(self):
 		dt = self.getParam('dt')
-		t = np.linspace(0, 10*dt, 11)
+		t = np.linspace(0, 60*dt, 61)
 		# print(t, dt, self.initCond)
-		if self.dim == 1:
-			self.sol = solve_ivp(self.rhs, (0, 10*dt), self.initCond, method='RK45', t_eval=t).y
-		elif self.dim == 2:
-			self.sol = solve_ivp(self.rhs, (0, dt), self.initCond.reshape(self.N * self.N), method='RK45', t_eval=t).y
+		with threadpool_limits(limits=1):
+			if self.dim == 1:
+				self.sol = solve_ivp(self.rhs, (0, 60*dt), self.initCond, method='RK45', t_eval=t).y
+			elif self.dim == 2:
+				self.sol = solve_ivp(self.rhs, (0, dt), self.initCond.reshape(self.N * self.N), method='RK45', t_eval=t).y
 
 	def updateX(self):
 		dx = self.parameters['dx'].val.get()
 		X = (self.N-1)*dx/2
-		self.x = np.linspace(-X, X, self.N + 2)
+		self.x = np.linspace(-X, X, self.N)
 
 	def getState(self, k):
 		if self.dim == 1:

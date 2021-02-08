@@ -19,7 +19,7 @@ class SimApp(tk.Tk):
 		## icon
 		# t.Tk.iconbitmap(self, default='clienticon.ico')
 		tk.Tk.wm_title(self, 'Simulator')
-
+		self.geometry('1024x768')
 		container = tk.Frame(self)
 
 		container.pack(side='top', fill='both', expand=True)
@@ -31,6 +31,9 @@ class SimApp(tk.Tk):
 
 		pages = (StartPage, MainPage)
 
+		self.setEq(Pedro)
+		self.eq.setInitialConditionKink()
+
 		for F in pages:
 			frame = F(container, self)
 			self.frames[F] = frame
@@ -39,8 +42,7 @@ class SimApp(tk.Tk):
 		self.show_frame(StartPage)
 
 		### load eq and init cond
-		self.setEq(Pedro)
-		self.eq.setInitialConditionKink()
+
 
 	def setEq(self, eq):
 		### eq should be a string or sth
