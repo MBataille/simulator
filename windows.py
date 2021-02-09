@@ -20,7 +20,7 @@ MED_FONT = ('Times', 10)
 style.use('ggplot')
 
 ST_ROWS = 60
-RAW_N = 50
+RAW_N = 30
 
 class LineBuilder:
     def __init__(self, line):
@@ -283,7 +283,7 @@ class MainPage(tk.Frame):
             vmax = np.max(self.imvals)
 
             self.im.set_clim(vmin, vmax)
-            self.ax.set_ylim(vmin, vmax)
+            self.ax.set_ylim(vmin - abs(vmin)/10, vmax + abs(vmax)/10)
 
 
         self.ys = eq.sol[:, k]

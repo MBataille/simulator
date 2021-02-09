@@ -31,7 +31,7 @@ class SimApp(tk.Tk):
 
 		pages = (StartPage, MainPage)
 
-		self.setEq(Pedro)
+		self.setEq(EqTest)
 		self.eq.setInitialConditionKink()
 
 		for F in pages:
