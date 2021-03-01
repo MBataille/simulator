@@ -7,7 +7,7 @@ import tkinter as tk
 
 from windows import StartPage, MainPage
 
-from eqntest import EqTest
+from eqntest import EqKink
 from pedro import Pedro
 
 class SimApp(tk.Tk):
@@ -31,7 +31,13 @@ class SimApp(tk.Tk):
 
 		pages = (StartPage, MainPage)
 
-		self.setEq(EqTest)
+		##### ACA SE CAMBIA LA ECUACION #####
+		
+		# Ecuacion de kinks 'basica': 
+		# self.setEq(EqKink)
+
+		# Ecuacion de pedro:
+		self.setEq(Pedro)
 		self.eq.setInitialConditionKink()
 
 		for F in pages:
