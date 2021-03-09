@@ -23,7 +23,7 @@ class Pedro(Equation):
 		k = self.parameters['k'].val.get()
 		omega = self.parameters['omega'].val.get()
 
-		y = eta + eps*x - x**3  + Laplace1D(x, dx, neumann=True) + gamma * np.cos(k*x) * np.sin(omega*t)
+		y = eta + eps*x - x**3  + Laplace1D(x, dx, neumann=True) + gamma * np.cos(k*self.x) * np.sin(omega*t)
 		return y
 
 	def setInitialConditionKink(self):

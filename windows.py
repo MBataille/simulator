@@ -113,8 +113,8 @@ class InspectorProfile(tk.Frame):
         self.y_minval = ttk.Entry(self, textvariable=self.y_minvar)
         self.y_maxval = ttk.Entry(self, textvariable=self.y_maxvar)
 
-        self.y_minval.grid(column=3, row=2)
-        self.y_maxval.grid(column=3, row=1)
+        self.y_minval.grid(column=3, row=1)
+        self.y_maxval.grid(column=3, row=2)
 
         self.auto_ylim = True
         self.autotxt = tk.StringVar()
