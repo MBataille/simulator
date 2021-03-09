@@ -2,7 +2,7 @@ from tkinter import *
 from eqn import Equation, Laplace1D, Parameter
 import numpy as np
 
-class EqTest(Equation):
+class EqKink(Equation):
 	'''params: dt, dx, alfa'''
 	def __init__(self):
 		self.initParams = { 'dt' : 0.1,

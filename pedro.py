@@ -12,15 +12,8 @@ class Pedro(Equation):
 							'gamma': 0.5,
 							'k': 0.07,
 							'omega': 2}
-		
-		self.params = {}
 
-		for p in self.initParams:
-			pvar = DoubleVar() # create var
-			pvar.set(self.initParams[p]) # assign initial value
-			self.params[p] = Parameter(p, pvar) # create parameter
-
-		Equation.__init__(self, 'KMOEP', 1, self.params)
+		Equation.__init__(self, 'KMOEP', 1, self.createParamsDict(self.initParams))
 		
 	def rhs(self, t, x): # CB libre
 		dx = self.parameters['dx'].val.get()

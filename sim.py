@@ -9,6 +9,7 @@ from windows import StartPage, MainPage
 
 from eqntest import EqKink
 from pedro import Pedro
+from brusselator import Brusselator
 
 class SimApp(tk.Tk):
 	
@@ -37,8 +38,8 @@ class SimApp(tk.Tk):
 		# self.setEq(EqKink)
 
 		# Ecuacion de pedro:
-		self.setEq(Pedro)
-		self.eq.setInitialConditionKink()
+		self.setEq(Brusselator)
+		self.eq.setInitialConditionZero()
 
 		for F in pages:
 			frame = F(container, self)
@@ -46,6 +47,7 @@ class SimApp(tk.Tk):
 			frame.grid(row=0, column=0, sticky='nsew')
 
 		self.show_frame(StartPage)
+		self.activePlot = None
 
 		### load eq and init cond
 
