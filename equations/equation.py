@@ -126,3 +126,4 @@ class Equation:
 
 	def getParam(self, p):
 		return self.parameters[p].val.get()
+

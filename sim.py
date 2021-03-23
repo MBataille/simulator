@@ -4,12 +4,12 @@ import os
 import sys
 
 import tkinter as tk
+from tkinter import ttk
 
 from windows import StartPage, MainPage
 
-from eqntest import EqKink
-from pedro import Pedro
-from brusselator import Brusselator
+from equations.allequations import ALL_EQUATIONS
+
 
 class SimApp(tk.Tk):
 	
@@ -33,12 +33,13 @@ class SimApp(tk.Tk):
 		pages = (StartPage, MainPage)
 
 		##### ACA SE CAMBIA LA ECUACION #####
-		
+
+
 		# Ecuacion de kinks 'basica': 
 		# self.setEq(EqKink)
 
 		# Ecuacion de pedro:
-		self.setEq(Brusselator)
+		self.setEq(ALL_EQUATIONS['Brusselator'])
 		self.eq.setInitialConditionZero()
 
 		for F in pages:

@@ -1,5 +1,5 @@
 from tkinter import *
-from eqn import Equation, Laplace1D, Parameter
+from .equation import Equation, Laplace1D, Parameter
 import numpy as np
 
 class EqKink(Equation):

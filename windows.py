@@ -18,6 +18,9 @@ from scipy.interpolate import interp1d
 
 from solvers import INTEGRATION_METHODS
 
+from equations.allequations import ALL_EQUATIONS
+
+
 LARGE_FONT = ('Times', 16)
 MED_FONT = ('Times', 12)
 COLORS = 'none blue orange green red purple brown pink gray olive cyan'.split(' ')
@@ -69,7 +72,6 @@ class ImageWindow(tk.Frame):
         self.pack(fill=tk.BOTH, expand=1)
 
 
-
 class StartPage(tk.Frame):
 
     def __init__(self, parent, controller):
@@ -77,6 +79,16 @@ class StartPage(tk.Frame):
         tk.Frame.__init__(self, parent)
         label = ttk.Label(self, text='Interactive simulation interface', font=LARGE_FONT)
         label.pack(pady=10, padx=10)
+
+        self.parent = parent
+        self.controller = controller
+
+        self.listbox = tk.Listbox(self)
+        for eqname in ALL_EQUATIONS:
+            self.listbox.insert(tk.END, eqname)
+
+        self.listbox.bind('<<ListboxSelect>>', self.change_select)
+        self.listbox.pack()
 
         btn_next = ttk.Button(self, text='Continue',
                         command=lambda: controller.show_frame(MainPage))
@@ -87,6 +99,14 @@ class StartPage(tk.Frame):
 
     def deactivate(self):
         pass
+
+    def change_select(self, event):
+        selection = event.widget.curselection()
+        if selection:
+            index = selection[0]
+            data = event.widget.get(index)
+            self.controller.setEq(ALL_EQUATIONS[data])
+            self.controller.eq.setInitialConditionZero()
 
 class InspectorProfile(tk.Frame):
 
@@ -297,7 +317,7 @@ class MainPage(tk.Frame):
         tk.Frame.__init__(self, parent)
 
         btn1 = ttk.Button(self, text='Back home',
-                        command=lambda: controller.show_frame(StartPage))
+                        command=self.back_home)
         btn1.grid(row=0, column=0)
 
         label = ttk.Label(self, text='Interactive simulation', font=LARGE_FONT)
@@ -316,6 +336,18 @@ class MainPage(tk.Frame):
         #lb = LineBuilder(line)
         #line, = fig.add_subplot(111).plot(x, y)
 
+    def deactivate(self):
+
+        self.active = False
+        self.killParamWindow()
+        self.killInspectorWindow()
+        self.killImageWindow()
+        self.stop_animation()
+
+    def back_home(self):
+        self.deactivate()
+        self.controller.show_frame(StartPage)
+
     def draw_fields(self):
         self.lines = []
         print(len(self.Fields), len(self.inspector.profile.current_colors))
@@ -331,9 +363,7 @@ class MainPage(tk.Frame):
     def activate(self):
 
         self.active = True
-        if self.anim_stopped:
-            self.ani.event_source.start()
-            return
+
         self.mustClear = False
         self.clicked = False
         self.released = False
@@ -481,14 +511,6 @@ class MainPage(tk.Frame):
         self.anim_stopped = True
         self.ani.event_source.stop()
 
-    def deactivate(self):
-        self.active = False
-
-        # stop animation
-        self.stop_animation
-
-        self.killParamWindow()
-
     def createParamWindow(self, eq):
 
         # create new window
@@ -506,9 +528,13 @@ class MainPage(tk.Frame):
         self.inspector = InspectorWindow(self.parentInspectorWindow, self.controller, self)
 
     def killParamWindow(self):
-
-        self.parentParamWindow.quit()
         self.parentParamWindow.destroy()
+
+    def killInspectorWindow(self):
+        self.parentInspectorWindow.destroy()
+
+    def killImageWindow(self):
+        self.parentImageWindow.destroy()
 
     def solve_cycle(self):
         eq = self.controller.eq
@@ -525,6 +551,7 @@ class MainPage(tk.Frame):
         self.draw_fields()
 
     def animate(self, i):
+        if not self.active: return
         eq = self.controller.eq
         eq.updateX()
 
