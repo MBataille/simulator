@@ -12,4 +12,4 @@ files = [f for f in os.listdir(ICONS_FOLDER) if os.path.isfile(os.path.join(ICON
 
 for file in files:
 	# print(f'moving {ICONS_FOLDER + file} to {mpl_folder + file}')
-	shutil.move(ICONS_FOLDER + file, mpl_folder + file)
+	shutil.copyfile(ICONS_FOLDER + file, mpl_folder + file)
