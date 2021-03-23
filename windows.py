@@ -12,13 +12,14 @@ from matplotlib.backends.backend_tkagg import (
 from matplotlib.figure import Figure
 import matplotlib.animation as animation
 from matplotlib import style
+from customtoolbar import CustomToolbar
 
 from scipy.interpolate import interp1d
 
 from solvers import INTEGRATION_METHODS
 
-LARGE_FONT = ('Times', 14)
-MED_FONT = ('Times', 10)
+LARGE_FONT = ('Times', 16)
+MED_FONT = ('Times', 12)
 COLORS = 'none blue orange green red purple brown pink gray olive cyan'.split(' ')
 
 
@@ -101,8 +102,8 @@ class InspectorProfile(tk.Frame):
         self.y_minlbl = ttk.Label(self, text='y_min')
         self.y_maxlbl = ttk.Label(self, text='y_max')
 
-        self.y_minlbl.grid(column=0, row=1, columnspan=2)
-        self.y_maxlbl.grid(column=0, row=2, columnspan=2)
+        self.y_minlbl.grid(column=0, row=2, columnspan=2)
+        self.y_maxlbl.grid(column=0, row=1, columnspan=2)
 
         y_min, y_max = -1, 1
         
@@ -113,8 +114,8 @@ class InspectorProfile(tk.Frame):
         self.y_minval = ttk.Entry(self, textvariable=self.y_minvar)
         self.y_maxval = ttk.Entry(self, textvariable=self.y_maxvar)
 
-        self.y_minval.grid(column=3, row=1)
-        self.y_maxval.grid(column=3, row=2)
+        self.y_minval.grid(column=3, row=2)
+        self.y_maxval.grid(column=3, row=1)
 
         self.auto_ylim = True
         self.autotxt = tk.StringVar()
@@ -267,13 +268,13 @@ class ParameterWindow:
         self.update = update
 
         self.titlelbl = ttk.Label(self.root, text='Parameters', width=15, font=LARGE_FONT)
-        self.paramslbls = [ttk.Label(self.root, text=self.parameters[p].name, width=6, font=MED_FONT) for p in self.parameters]
-        self.paramsvals = [ttk.Entry(self.root, textvariable=self.parameters[p].val, width=4, font=MED_FONT) for p in self.parameters]
+        self.paramslbls = [ttk.Label(self.root, text=self.parameters[p].name, font=MED_FONT) for p in self.parameters]
+        self.paramsvals = [ttk.Entry(self.root, textvariable=self.parameters[p].val, font=MED_FONT) for p in self.parameters]
 
         self.titlelbl.grid(column=0, row=0, columnspan=3)
         for i in range(len(self.paramslbls)):
-            self.paramslbls[i].grid(column=0, row=i+1, columnspan=2)
-            self.paramsvals[i].grid(column=3, row=i+1)
+            self.paramslbls[i].grid(column=0, row=i+1, columnspan=1)
+            self.paramsvals[i].grid(column=1, row=i+1, columnspan=2)
 
         self.resetBtn = ttk.Button(self.root, text='Reset', command=self.reset)
         self.resetBtn.grid(column=0, row=len(self.paramslbls)+1)
@@ -299,7 +300,7 @@ class MainPage(tk.Frame):
                         command=lambda: controller.show_frame(StartPage))
         btn1.grid(row=0, column=0)
 
-        label = ttk.Label(self, text='Kit', font=LARGE_FONT)
+        label = ttk.Label(self, text='Interactive simulation', font=LARGE_FONT)
         label.grid(row=0, column=1)
 
         btn2 = ttk.Button(self, text='Reset',
@@ -385,7 +386,7 @@ class MainPage(tk.Frame):
         self.canvas.mpl_connect('motion_notify_event', self.move_click)
 
 
-        self.toolbar = NavigationToolbar2Tk(self.canvas, self.container_mpl)
+        self.toolbar = CustomToolbar(self.canvas, self.container_mpl, self)
         self.toolbar.update()
         self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
@@ -403,10 +404,7 @@ class MainPage(tk.Frame):
         #self.columnconfigure(2, weight=1)
 
         self.isEditing = False
-        btn3 = ttk.Button(self, text='Edit', command=self.edit)
-
-        btn3.grid(row=2, column=1, sticky='ew')
-
+        self.isPaused = False
 
         self.inspector.profile.setAx(self.ax)
         ### Start animation
@@ -420,6 +418,38 @@ class MainPage(tk.Frame):
         else:
             self.isEditing = True
             self.animate(-1)
+
+    def pause(self):
+        if self.isPaused: return
+        self.isPaused = True
+        self.animate(-1)
+
+    def play(self):
+        if not self.isPaused: return
+        self.isPaused = False
+        self.released = True
+        self.animate(-1)
+
+    def open_params(self):
+        try:
+            if self.parentParamWindow.state() == 'normal':
+                self.parentParamWindow.focus_set()
+        except Exception as e:
+            self.createParamWindow(self.controller.eq)
+
+    def open_equation(self):
+        try:
+            if self.parentImageWindow.state() == 'normal':
+                self.parentImageWindow.focus_set()
+        except Exception as e:
+            self.createImageWindow(self.controller.eq)
+
+    def open_inspector(self):
+        try:
+            if self.parentInspectorWindow.state() == 'normal':
+                self.parentInspectorWindow.focus_set()
+        except Exception as e:
+            self.createInspectorWindow(self.controller.eq)
 
     def on_click(self, event):
         if event.inaxes == self.ax:
@@ -500,8 +530,11 @@ class MainPage(tk.Frame):
 
         if i == -1:
             i = self.last_i
+            
         else:
             self.last_i = i
+
+
 
         if self.released:
             self.Fields[self.inspector.profile.active_field_indx] = self.active_Field
@@ -516,6 +549,9 @@ class MainPage(tk.Frame):
             self.update_fields()
             #self.line.figure.canvas.draw()
             return self.lines
+
+        if self.isPaused:
+            return self.lines + [self.im]
 
         k = (i-self.i_release) % 60
 

@@ -20,7 +20,7 @@ class SimApp(tk.Tk):
 		## icon
 		# t.Tk.iconbitmap(self, default='clienticon.ico')
 		tk.Tk.wm_title(self, 'Simulator')
-		self.geometry('1024x768')
+		self.geometry('512x768')
 		container = tk.Frame(self)
 
 		container.pack(side='top', fill='both', expand=True)
