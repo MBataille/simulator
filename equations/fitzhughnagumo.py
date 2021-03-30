@@ -15,11 +15,11 @@ class FitzHughNagumo(Equation):
 		Equation.__init__(self, 'FHN', 1, self.createParamsDict(self.initParams), n_fields=2, N=400, fieldNames=['v', 'w'])
 
 	def rhs(self, t, x):
-		dx = self.parameters['dx'].val.get()
-		I = self.parameters['I'].val.get()
-		a = self.parameters['a'].val.get()
-		b = self.parameters['b'].val.get()
-		tau = self.parameters['tau'].val.get()
+		dx = self.parameters['dx'].getVal()
+		I = self.parameters['I'].getVal()
+		a = self.parameters['a'].getVal()
+		b = self.parameters['b'].getVal()
+		tau = self.parameters['tau'].getVal()
 		#B = self.parameters['B'].val.get()
 
 		# assuming X and Y have N/2 points each

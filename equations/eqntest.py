@@ -9,26 +9,19 @@ class EqKink(Equation):
 							'dx': 0.5, 
 							'eps': 1, 
 							'alpha': 0 }
-		
-		self.params = {}
 
-		for p in self.initParams:
-			pvar = DoubleVar() # create var
-			pvar.set(self.initParams[p]) # assign initial value
-			self.params[p] = Parameter(p, pvar) # create parameter
-
-		Equation.__init__(self, 'Test', 1, self.params)
+		Equation.__init__(self, 'Test', 1,  self.createParamsDict(self.initParams))
 		
 
 	def rhs(self, t, x): # CB periodica
-		dx = self.parameters['dx'].val.get()
-		eps = self.parameters['eps'].val.get()
-		alpha = self.parameters['alpha'].val.get()
+		dx = self.parameters['dx'].getVal()
+		eps = self.parameters['eps'].getVal()
+		alpha = self.parameters['alpha'].getVal()
 
 		y = alpha + eps*x - x**3  + Laplace1D(x, dx, neumann=True)
 		return y
 
 	def setInitialConditionKink(self):
 		self.updateX()
-		eps = self.parameters['eps'].val.get()
+		eps = self.parameters['eps'].getVal()
 		self.initCond = np.sqrt(eps) * np.tanh(self.x * np.sqrt(eps/2))

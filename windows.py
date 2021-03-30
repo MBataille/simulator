@@ -298,7 +298,7 @@ class ParameterWindow:
 
         self.titlelbl = ttk.Label(self.root, text='Parameters', width=15, font=LARGE_FONT)
         self.paramslbls = [ttk.Label(self.root, text=self.parameters[p].name, font=MED_FONT) for p in self.parameters]
-        self.paramsvals = [ttk.Entry(self.root, textvariable=self.parameters[p].val, font=MED_FONT) for p in self.parameters]
+        self.paramsvals = [ttk.Entry(self.root, textvariable=self.parameters[p].var, font=MED_FONT) for p in self.parameters]
 
         self.titlelbl.grid(column=0, row=0, columnspan=3)
         for i in range(len(self.paramslbls)):
@@ -310,7 +310,7 @@ class ParameterWindow:
 
     def reset(self):
         for p in self.eq.initParams:
-            self.parameters[p].val.set(self.eq.initParams[p])
+            self.parameters[p].var.set(str(self.eq.initParams[p]))
 
 
 

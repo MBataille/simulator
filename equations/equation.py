@@ -8,9 +8,18 @@ from tkinter import *
 from solvers import INTEGRATION_METHODS
 
 class Parameter:
-	def __init__(self, name, val):
+	def __init__(self, name, var):
 		self.name = name
-		self.val = val
+		self.var = var
+		self.val = float(var.get())
+
+	def getVal(self):
+		try:
+			val = float(self.var.get())
+			self.val = val
+			return self.val
+		except ValueError:
+			return self.val
 
 def Laplace1D(x, dx, neumann=False):
 	laplace = (np.roll(x, 1) + np.roll(x, -1) - 2*x)/(dx*dx)
@@ -50,8 +59,8 @@ class Equation:
 	def createParamsDict(self, initParams):
 		params = {}
 		for p in initParams:
-			pvar = DoubleVar() # create var
-			pvar.set(initParams[p]) # assign initial value
+			pvar = StringVar() # create var
+			pvar.set(str(initParams[p])) # assign initial value
 			params[p] = Parameter(p, pvar) # create parameter
 		return params
 
@@ -99,7 +108,7 @@ class Equation:
 				self.sol = self.solver.solve(self.rhs, (0, dt), self.initCond.reshape(self.N * self.N), t)
 
 	def updateX(self):
-		dx = self.parameters['dx'].val.get()
+		dx = self.parameters['dx'].getVal()
 		Ni = round(self.N / self.n_fields)
 		X = (Ni-1)*dx/2
 		self.x = np.linspace(-X, X, Ni)
@@ -132,5 +141,5 @@ class Equation:
 			self.initCond[i * Ni: (i+1) * Ni] = fields[i]
 
 	def getParam(self, p):
-		return self.parameters[p].val.get()
+		return self.parameters[p].getVal()
 

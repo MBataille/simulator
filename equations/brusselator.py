@@ -13,9 +13,9 @@ class Brusselator(Equation):
 		Equation.__init__(self, 'Brusselator', 1, self.createParamsDict(self.initParams), n_fields=2, N=400, fieldNames=['x', 'y'])
 
 	def rhs(self, t, x):
-		dx = self.parameters['dx'].val.get()
-		A = self.parameters['A'].val.get()
-		B = self.parameters['B'].val.get()
+		dx = self.parameters['dx'].getVal()
+		A = self.parameters['A'].getVal()
+		B = self.parameters['B'].getVal()
 
 		# assuming X and Y have N/2 points each
 		X = x[:round(self.N/2)]

@@ -16,17 +16,17 @@ class Pedro(Equation):
 		Equation.__init__(self, 'KMOEP', 1, self.createParamsDict(self.initParams))
 		
 	def rhs(self, t, x): # CB libre
-		dx = self.parameters['dx'].val.get()
-		eps = self.parameters['eps'].val.get()
-		eta = self.parameters['eta'].val.get()
-		gamma = self.parameters['gamma'].val.get()
-		k = self.parameters['k'].val.get()
-		omega = self.parameters['omega'].val.get()
+		dx = self.getParam('dx')
+		eps = self.getParam('eps')
+		eta = self.getParam('eta')
+		gamma = self.getParam('gamma')
+		k = self.getParam('k')
+		omega = self.getParam('omega')
 
 		y = eta + eps*x - x**3  + Laplace1D(x, dx, neumann=True) + gamma * np.cos(k*self.x) * np.sin(omega*t)
 		return y
 
 	def setInitialConditionKink(self):
 		self.updateX()
-		eps = self.parameters['eps'].val.get()
+		eps = self.getParam('eps')
 		self.initCond = np.sqrt(eps) * np.tanh(self.x * np.sqrt(eps/2))
