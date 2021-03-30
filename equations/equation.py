@@ -19,6 +19,13 @@ def Laplace1D(x, dx, neumann=False):
 		laplace[-1] = 2 * (x[-2] - x[-1]) / (dx*dx)
 	return laplace
 
+def Derivx(x, dx, neumann=False):
+	derivx = (np.roll(x, -1) - np.roll(x, 1)) / (2*dx)
+	if neumann:
+		derivx[0] = 0
+		derivx[-1] = 0
+	return derivx
+
 class Equation:
 	def __init__(self, name, dim, parameters, N=200, isComplex=False, img=None, n_fields=1, fieldNames=['u']):
 		self.name = name

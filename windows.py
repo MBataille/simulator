@@ -21,8 +21,8 @@ from solvers import INTEGRATION_METHODS
 from equations.allequations import ALL_EQUATIONS
 
 
-LARGE_FONT = ('Times', 16)
-MED_FONT = ('Times', 12)
+LARGE_FONT = ('Arial', 16)
+MED_FONT = ('Arial', 12)
 COLORS = 'none blue orange green red purple brown pink gray olive cyan'.split(' ')
 
 
@@ -127,9 +127,9 @@ class InspectorProfile(tk.Frame):
 
         y_min, y_max = -1, 1
         
-        self.y_minvar = tk.DoubleVar(value=y_min)
+        self.y_minvar = tk.StringVar(value=str(y_min))
 
-        self.y_maxvar = tk.DoubleVar(value=y_max)
+        self.y_maxvar = tk.StringVar(value=str(y_max))
 
         self.y_minval = ttk.Entry(self, textvariable=self.y_minvar)
         self.y_maxval = ttk.Entry(self, textvariable=self.y_maxvar)
@@ -139,7 +139,7 @@ class InspectorProfile(tk.Frame):
 
         self.auto_ylim = True
         self.autotxt = tk.StringVar()
-        self.autotxt.set('Manual')
+        self.autotxt.set('Auto')
         self.autobtn = ttk.Button(self, textvariable=self.autotxt, command=self.set_auto)
         self.autobtn.grid(column=0, row=3, columnspan=3)
 
@@ -180,11 +180,15 @@ class InspectorProfile(tk.Frame):
         self.choosecolorbox.grid(column=3, row=6)
 
     def change_field(self, event):
+        mainpg = self.parent.mainpg
+        mainpg.activeFieldToCurrent()
         self.active_field_indx = self.choosefieldcbox.current()
+        mainpg.resetActiveField()
         self.choosecolorbox.current(self.current_colors[self.active_field_indx])
 
     def change_color(self, event):
         new_color = self.choosecolorbox.current()
+        mainpg = self.parent.mainpg
         if self.current_colors[self.active_field_indx] != new_color:
             self.current_colors[self.active_field_indx] = new_color
             self.parent.mainpg.redraw_fields()
@@ -202,17 +206,22 @@ class InspectorProfile(tk.Frame):
     def set_auto(self):
         if self.auto_ylim:
             self.auto_ylim = False
-            self.autotxt.set('Auto')
+            self.autotxt.set('Manual')
         else:
             self.auto_ylim = True
-            self.autotxt.set('Manual')
+            self.autotxt.set('Auto')
 
     def set_ylim(self, ymin, ymax):
-        self.y_minvar.set(ymin)
-        self.y_maxvar.set(ymax)
+        self.y_minvar.set(str(ymin))
+        self.y_maxvar.set(str(ymax))
 
     def get_ylim(self):
-        return (self.y_minvar.get(), self.y_maxvar.get())
+        try:
+            y_min = float(self.y_minvar.get())
+            y_max = float(self.y_maxvar.get())
+            return y_min, y_max
+        except ValueError as e:
+            return None, None
 
     def activate(self):
         pass
@@ -399,7 +408,7 @@ class MainPage(tk.Frame):
         self.imvals = spatiotemp
         x0 = eq.x[0]
         xf = eq.x[-1]
-        self.im = self.ax2.imshow(self.imvals, extent=[x0, xf, 0, 60], aspect='auto')
+        self.im = self.ax2.imshow(self.imvals, extent=[x0, xf, 0, ST_ROWS], aspect='auto')
         #self.ax2.set_xlabel('x')
         self.ax2.set_ylabel('t')
         self.fig.colorbar(self.im, ax=self.ax2, orientation='horizontal')
@@ -435,6 +444,8 @@ class MainPage(tk.Frame):
 
         self.isEditing = False
         self.isPaused = False
+        self.k_spatiotemp = 0
+        self.k_sol = 0
 
         self.inspector.profile.setAx(self.ax)
         ### Start animation
@@ -442,22 +453,24 @@ class MainPage(tk.Frame):
         self.ani = animation.FuncAnimation(self.fig, self.animate, frames=60, interval=100, blit=False)
 
     def edit(self):
-        print(f'Edit clicked!, isEditing = {self.isEditing}')
+        print(f'Edit clicked!, isEditing = {not self.isEditing}')
         if self.isEditing:
             self.isEditing = False
         else:
             self.isEditing = True
-            self.animate(-1)
+            # self.animate(-1)
 
     def pause(self):
         if self.isPaused: return
         self.isPaused = True
-        self.animate(-1)
 
     def play(self):
         if not self.isPaused: return
         self.isPaused = False
-        self.released = True
+        #self.release = True
+        # if self.isEditing:
+        #     self.isEditing = False
+        #     self.released = True
         self.animate(-1)
 
     def open_params(self):
@@ -501,11 +514,13 @@ class MainPage(tk.Frame):
             self.released = True
             self.isEditing = False
             self.animate(-1)
+            # if not self.isPaused:
+            #     self.play()
 
     def move_click(self, event):
         if event.inaxes == self.ax and self.clicked:
             self.updateY(event.xdata, event.ydata)
-            self.animate(-1)
+            #self.animate(-1)
 
     def stop_animation(self):
         self.anim_stopped = True
@@ -540,15 +555,23 @@ class MainPage(tk.Frame):
         eq = self.controller.eq
         eq.solve()
         eq.initCond = eq.sol[:, -1]
+        self.k_sol = 0
 
     def update_fields(self):
         for i in range(len(self.Fields)):
             if self.lines[i] is not None:
                 self.lines[i].set_ydata(self.Fields[i])
+                self.lines[i].set_xdata(self.controller.eq.x)
 
     def redraw_fields(self):
         self.ax.cla()
         self.draw_fields()
+
+    def resetActiveField(self):
+        self.active_Field = self.Fields[self.inspector.profile.active_field_indx]
+
+    def activeFieldToCurrent(self):
+        self.Fields[self.inspector.profile.active_field_indx] = self.active_Field
 
     def animate(self, i):
         if not self.active: return
@@ -556,67 +579,73 @@ class MainPage(tk.Frame):
         eq.updateX()
 
         if i == -1:
-            i = self.last_i
-            
-        else:
-            self.last_i = i
+            i = self.last_i # no estuy usando
+    
+            if self.released:
+                print('Released!')
+                self.activeFieldToCurrent()
+                eq.setInitCondFields(self.Fields)
+                self.solve_cycle()
+                self.released = False
+                return self.lines
 
+        elif not self.isPaused:
+            self.last_i = i # tpco toy usando
 
+        # if self.released:
+        #     self.i_release = i
+        #     self.released = False
 
-        if self.released:
-            self.Fields[self.inspector.profile.active_field_indx] = self.active_Field
-            eq.setInitCondFields(self.Fields)
-            self.i_release = i
-            self.solve_cycle()
-            self.released = False
-            return self.lines
+        # if self.isEditing:
+            # self.Fields[self.inspector.profile.active_field_indx] = self.active_Field
+        #     self.update_fields()
+        #     #self.line.figure.canvas.draw()
+            # return self.lines
 
-        if self.isEditing:
-            self.Fields[self.inspector.profile.active_field_indx] = self.active_Field
-            self.update_fields()
-            #self.line.figure.canvas.draw()
-            return self.lines
-
-        if self.isPaused:
+        if self.isPaused or self.isEditing:
             return self.lines + [self.im]
 
-        k = (i-self.i_release) % 60
-
-
+        k = (i-self.i_release) % ST_ROWS
+        # k = i % ST_ROWS
+        # print(f'i = {i}, i_r = {self.i_release}, i_s = {self.i_start_pause}, k = {k}, k_spatiotemp = {k_spatiotemp}.')
         # print(i, k)
-        if k == 0:
+        if self.k_sol == 0:
             self.solve_cycle()
-        self.Fields = eq.getFields(k)
-        self.active_Field = self.Fields[self.inspector.profile.active_field_indx]
+        self.Fields = eq.getFields(self.k_sol)
+        self.resetActiveField()
 
         if self.mustClear:
             self.redraw_fields()
             self.ax2.cla()
-            self.im = self.ax2.imshow(np.zeros((ST_ROWS, eq.N)), extent=[x0, xf, 0, 60], aspect='auto')
+            self.im = self.ax2.imshow(np.zeros((ST_ROWS, eq.N)), extent=[x0, xf, 0, ST_ROWS], aspect='auto')
             self.mustClear = False
         else:
-            self.update_fields()
-            self.imvals[k, :] = self.Fields[0] # for the moment
+            self.update_fields() # draw fields
+            self.imvals[self.k_spatiotemp, :] = self.Fields[0] # for the moment
             self.im.set_data(self.imvals)
 
-            xmin = np.min(eq.sol[:, k])
-            xmax = np.max(eq.sol[:, k])
+            self.k_spatiotemp = (self.k_spatiotemp + 1)% 60
+
+            xmin = np.min(self.Fields)
+            xmax = np.max(self.Fields)
 
             vmin = np.min(self.imvals)
             vmax = np.max(self.imvals)
 
             self.im.set_clim(vmin, vmax)
-
+            self.ax.set_xlim(eq.x[0], eq.x[-1])
             if self.inspector.profile.auto_ylim:
                 ymin = vmin - abs(vmin)/10
                 ymax = vmax + abs(vmax)/10
 
-                self.ax.set_ylim(min(ymin, xmin), max(ymax, xmax))
-                self.inspector.profile.set_ylim(ymin, ymax)
+                self.ax.set_ylim(min(ymin, xmin - abs(xmin)/10), max(ymax, xmax + abs(xmax)/10))
+                self.inspector.profile.set_ylim(min(ymin, xmin - abs(xmin)/10), max(ymax, xmax + abs(xmax)/10))
             else:
                 ymin, ymax = self.inspector.profile.get_ylim()
-                self.ax.set_ylim(ymin, ymax)
+                if ymin is not None:
+                    self.ax.set_ylim(ymin, ymax)
 
+        self.k_sol = (self.k_sol + 1) % ST_ROWS
         return self.lines + [self.im]
 
     def raw_xtoi(self, x): # from raw_x to i
@@ -642,7 +671,8 @@ class MainPage(tk.Frame):
 
     def updateY(self, xdata, ydata):
         xi = self.xtoi(xdata)
-        self.active_Field = self.Fields[self.inspector.profile.active_field_indx]
+        #self.active_Field = self.Fields[self.inspector.profile.active_field_indx]
+        self.resetActiveField()
         if xi < len(self.active_Field) - 4 and xi >= 4:
 
             ### interpolate
@@ -667,6 +697,8 @@ class MainPage(tk.Frame):
             self.active_Field[0:4] = ydata
         else:
             self.active_Field[-4:] = ydata
+        self.activeFieldToCurrent()
+        self.update_fields()
 
     def clear(self):
         self.ax.clear()
