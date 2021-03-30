@@ -388,6 +388,35 @@ class MainPage(tk.Frame):
         self.released = False
         self.i_release = 0
 
+
+        self.btn_container = tk.Frame(self)
+        self.btn_container.grid(row=1, columnspan=3)
+
+
+        self.btn_e = ttk.Button(self.btn_container, text='Edit',
+                        command=self.edit)
+        self.btn_e.grid(row=0, column=0)
+
+        self.btn_play = ttk.Button(self.btn_container, text='Play',
+                        command=self.play)
+        self.btn_play.grid(row=0, column=1)        
+
+        self.btn_pause = ttk.Button(self.btn_container, text='Pause',
+                        command=self.pause)
+        self.btn_pause.grid(row=0, column=2)
+
+        self.btn_params = ttk.Button(self.btn_container, text='Params',
+                        command=self.open_params)
+        self.btn_params.grid(row=0, column=3)
+
+        self.btn_eq = ttk.Button(self.btn_container, text='Equation',
+                        command=self.open_equation)
+        self.btn_eq.grid(row=0, column=4)        
+
+        self.btn_insp = ttk.Button(self.btn_container, text='Inspector',
+                        command=self.open_inspector)
+        self.btn_insp.grid(row=0, column=5)
+
         ## assuming eq and init cond are already defined
         eq = self.controller.eq
         eq.updateX()
@@ -435,18 +464,18 @@ class MainPage(tk.Frame):
         self.canvas.mpl_connect('motion_notify_event', self.move_click)
 
 
-        self.toolbar = CustomToolbar(self.canvas, self.container_mpl, self)
+        self.toolbar = NavigationToolbar2Tk(self.canvas, self.container_mpl)
         self.toolbar.update()
         self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         #self.container_mpl.geometry('512x740')
-        self.container_mpl.grid(row=1, column=0, columnspan=3, sticky='ns')
+        self.container_mpl.grid(row=2, column=0, columnspan=3, sticky='ns')
 
 
         #self.rowconfigure(0, weight=1)
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
 
         #self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
