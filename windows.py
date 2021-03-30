@@ -22,7 +22,7 @@ from equations.allequations import ALL_EQUATIONS
 
 
 LARGE_FONT = ('Arial', 16)
-MED_FONT = ('Arial', 12)
+MED_FONT = ('Arial', 10)
 COLORS = 'none blue orange green red purple brown pink gray olive cyan'.split(' ')
 
 
@@ -119,8 +119,8 @@ class InspectorProfile(tk.Frame):
         self.titlelbl = ttk.Label(self, text='Inspector: Profile', font=LARGE_FONT)
         self.titlelbl.grid(column=0, row=0, columnspan=3, padx=20, pady=10)
 
-        self.y_minlbl = ttk.Label(self, text='y_min')
-        self.y_maxlbl = ttk.Label(self, text='y_max')
+        self.y_minlbl = ttk.Label(self, text='y_min', font=MED_FONT)
+        self.y_maxlbl = ttk.Label(self, text='y_max', font=MED_FONT)
 
         self.y_minlbl.grid(column=0, row=2, columnspan=2)
         self.y_maxlbl.grid(column=0, row=1, columnspan=2)
@@ -131,8 +131,8 @@ class InspectorProfile(tk.Frame):
 
         self.y_maxvar = tk.StringVar(value=str(y_max))
 
-        self.y_minval = ttk.Entry(self, textvariable=self.y_minvar)
-        self.y_maxval = ttk.Entry(self, textvariable=self.y_maxvar)
+        self.y_minval = ttk.Entry(self, textvariable=self.y_minvar, font=MED_FONT)
+        self.y_maxval = ttk.Entry(self, textvariable=self.y_maxvar, font=MED_FONT)
 
         self.y_minval.grid(column=3, row=2)
         self.y_maxval.grid(column=3, row=1)
@@ -155,21 +155,28 @@ class InspectorProfile(tk.Frame):
 
         self.combobox.grid(column=3, row=4, padx=10, pady=10)
 
-        self.descriptionlbl = ttk.Label(self, textvariable=self.description_text)
+        self.descriptionlbl = ttk.Label(self, textvariable=self.description_text, font=MED_FONT)
         self.descriptionlbl.grid(row=5, column=0, columnspan=3, padx=5, pady=5, sticky='e')
 
+        self.ellapsed_time_desc_lbl = ttk.Label(self, text='Ellapsed time: ', font=MED_FONT)
+        self.ellapsed_time_desc_lbl.grid(row=6, column=0, padx=5, pady=5)
+
+        self.ellapsed_time_var = tk.StringVar(value='0')
+        self.ellapsed_time_val_lbl = ttk.Label(self, textvariable=self.ellapsed_time_var)
+        self.ellapsed_time_val_lbl.grid(row=6, column=1, padx=5, pady=5)
+
         self.choosefieldbl = ttk.Label(self, text='Show field: ', font=MED_FONT)
-        self.choosefieldbl.grid(column=0, row=6, padx=10, pady=10)
+        self.choosefieldbl.grid(column=0, row=7, padx=10, pady=10)
 
         self.choosefieldcbox = ttk.Combobox(self, state='readonly')
         self.choosefieldcbox['values'] = self.parent.controller.eq.fieldNames
         self.choosefieldcbox.bind('<<ComboboxSelected>>', self.change_field)
         self.choosefieldcbox.current(0)
-        self.choosefieldcbox.grid(column=1, row=6)
+        self.choosefieldcbox.grid(column=1, row=7)
         self.active_field_indx = 0
 
         self.choosecolorlbl = ttk.Label(self, text='Color: ', font=MED_FONT)
-        self.choosecolorlbl.grid(column=2, row=6)
+        self.choosecolorlbl.grid(column=2, row=7)
 
         self.current_colors = [_i + 1 for _i in range(self.parent.controller.eq.n_fields)]
 
@@ -177,7 +184,7 @@ class InspectorProfile(tk.Frame):
         self.choosecolorbox['values'] = COLORS
         self.choosecolorbox.bind('<<ComboboxSelected>>', self.change_color)
         self.choosecolorbox.current(self.current_colors[0])
-        self.choosecolorbox.grid(column=3, row=6)
+        self.choosecolorbox.grid(column=3, row=7)
 
     def change_field(self, event):
         mainpg = self.parent.mainpg
@@ -234,6 +241,9 @@ class InspectorProfile(tk.Frame):
         ymin, ymax = self.ax.get_ylim()
         self.y_minvar.set(ymin)
         self.y_maxvar.set(ymax)
+
+    def setTime(self, t):
+        self.ellapsed_time_var.set(str(round(t,4)))
 
 class InspectorSpatiotemporal(tk.Frame):
 
@@ -446,6 +456,7 @@ class MainPage(tk.Frame):
         self.isPaused = False
         self.k_spatiotemp = 0
         self.k_sol = 0
+        self.t = 0
 
         self.inspector.profile.setAx(self.ax)
         ### Start animation
@@ -613,7 +624,7 @@ class MainPage(tk.Frame):
             self.solve_cycle()
         self.Fields = eq.getFields(self.k_sol)
         self.resetActiveField()
-
+        self.inspector.profile.setTime(self.t)
         if self.mustClear:
             self.redraw_fields()
             self.ax2.cla()
@@ -646,6 +657,7 @@ class MainPage(tk.Frame):
                     self.ax.set_ylim(ymin, ymax)
 
         self.k_sol = (self.k_sol + 1) % ST_ROWS
+        self.t += eq.getParam('dt')
         return self.lines + [self.im]
 
     def raw_xtoi(self, x): # from raw_x to i
