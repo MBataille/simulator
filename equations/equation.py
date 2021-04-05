@@ -3,7 +3,7 @@ from matplotlib import animation
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 from threadpoolctl import threadpool_limits
-from tkinter import * 
+from tkinter import StringVar
 
 from solvers import INTEGRATION_METHODS
 
@@ -41,7 +41,6 @@ class Equation:
 		self.dim = dim
 		self.img = img
 		self.parameters = parameters
-		self.N = N
 		self.isComplex = isComplex
 		self.fieldNames = fieldNames
 
@@ -50,8 +49,9 @@ class Equation:
 
 		self.n_fields = n_fields
 
-		self.Ni = round(N / n_fields)
-		# parameters[0] = dt
+		# each field will have N points
+		self.Ni = N
+		self.N = n_fields * N
 
 	def setSolver(self, solver):
 		self.solver = solver
@@ -63,6 +63,15 @@ class Equation:
 			pvar.set(str(initParams[p])) # assign initial value
 			params[p] = Parameter(p, pvar) # create parameter
 		return params
+
+	def getParam(self, p):
+		return self.parameters[p].getVal()
+
+	def getCurrentParams(self):
+		cparams = {}
+		for p in self.parameters:
+			cparams[p] = self.parameters[p].getVal()
+		return cparams
 
 	def loadState(self, filename):
 		data = np.load(filename, allow_pickle=True)
@@ -140,6 +149,4 @@ class Equation:
 		for i in range(len(fields)):
 			self.initCond[i * Ni: (i+1) * Ni] = fields[i]
 
-	def getParam(self, p):
-		return self.parameters[p].getVal()
 

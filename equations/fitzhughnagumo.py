@@ -15,16 +15,11 @@ class FitzHughNagumo(Equation):
 		Equation.__init__(self, 'FHN', 1, self.createParamsDict(self.initParams), n_fields=2, N=400, fieldNames=['v', 'w'])
 
 	def rhs(self, t, x):
-		dx = self.parameters['dx'].getVal()
-		I = self.parameters['I'].getVal()
-		a = self.parameters['a'].getVal()
-		b = self.parameters['b'].getVal()
-		tau = self.parameters['tau'].getVal()
-		#B = self.parameters['B'].val.get()
+		v = self.getCurrentParams()
+		dx = v['dx']; I = v['I']; a = v['a']; b = v['b']; tau = v['tau']
 
-		# assuming X and Y have N/2 points each
-		V = x[:round(self.N/2)]
-		Omega = x[round(self.N/2):]
+		V = x[:self.Ni]
+		Omega = x[self.Ni:]
 
 		dV = V - V**3 / 3 - Omega + I + Laplace1D(V, dx, neumann=True)
 		dOmega = 1/tau * (V + a - b * Omega + Laplace1D(Omega, dx, neumann=True))

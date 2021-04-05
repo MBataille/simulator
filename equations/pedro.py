@@ -16,12 +16,8 @@ class Pedro(Equation):
 		Equation.__init__(self, 'KMOEP', 1, self.createParamsDict(self.initParams))
 		
 	def rhs(self, t, x): # CB libre
-		dx = self.getParam('dx')
-		eps = self.getParam('eps')
-		eta = self.getParam('eta')
-		gamma = self.getParam('gamma')
-		k = self.getParam('k')
-		omega = self.getParam('omega')
+		v = self.getCurrentParams()
+		dx = v['dx']; eps = v['eps']; eta = v['eta']; gamma = v['gamma']; k = v['k']; omega = v['omega']
 
 		y = eta + eps*x - x**3  + Laplace1D(x, dx, neumann=True) + gamma * np.cos(k*self.x) * np.sin(omega*t)
 		return y

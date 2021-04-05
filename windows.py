@@ -6,13 +6,14 @@ from PIL import Image, ImageTk
 import numpy as np
 
 import matplotlib
+
 matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
 from matplotlib.figure import Figure
 import matplotlib.animation as animation
 from matplotlib import style
-from customtoolbar import CustomToolbar
+#from customtoolbar import CustomToolbar
 
 from scipy.interpolate import interp1d
 
@@ -20,11 +21,9 @@ from solvers import INTEGRATION_METHODS
 
 from equations.allequations import ALL_EQUATIONS
 
-
 LARGE_FONT = ('Arial', 16)
 MED_FONT = ('Arial', 10)
 COLORS = 'none blue orange green red purple brown pink gray olive cyan'.split(' ')
-
 
 PROFILE = 'profile'
 SPATIOTEMPORAL = 'spatiotemporal'
@@ -34,35 +33,16 @@ style.use('ggplot')
 ST_ROWS = 60
 RAW_N = 30
 
-class LineBuilder:
-    def __init__(self, line):
-
-        self.line = line
-        self.xs = list(line.get_xdata())
-        self.ys = list(line.get_ydata())
-        self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
-
-    def update(self):
-        pass
-
-    def __call__(self, event):
-
-        print('click', event)
-        if event.inaxes != self.line.axes: return
-        self.xs.append(event.xdata)
-        self.ys.append(event.ydata)
-        self.line.set_data(self.xs, self.ys)
-        self.line.figure.canvas.draw()
 
 class ImageWindow(tk.Frame):
     def __init__(self, master, filename):
         tk.Frame.__init__(self, master)
         self.master = master
-        
+
         load = Image.open(filename)
         w, h = load.size
 
-        self.master.geometry(str(w)+ 'x' +str(h))
+        self.master.geometry(str(w) + 'x' + str(h))
 
         render = ImageTk.PhotoImage(load)
         img = ttk.Label(self, image=render)
@@ -91,7 +71,7 @@ class StartPage(tk.Frame):
         self.listbox.pack()
 
         btn_next = ttk.Button(self, text='Continue',
-                        command=lambda: controller.show_frame(MainPage))
+                              command=lambda: controller.show_frame(MainPage))
         btn_next.pack()
 
     def activate(self):
@@ -108,12 +88,13 @@ class StartPage(tk.Frame):
             self.controller.setEq(ALL_EQUATIONS[data])
             self.controller.eq.setInitialConditionZero()
 
+
 class InspectorProfile(tk.Frame):
 
     def __init__(self, parent):
 
         tk.Frame.__init__(self, parent)
-        
+
         self.parent = parent
 
         self.titlelbl = ttk.Label(self, text='Inspector: Profile', font=LARGE_FONT)
@@ -126,7 +107,7 @@ class InspectorProfile(tk.Frame):
         self.y_maxlbl.grid(column=0, row=1, columnspan=2)
 
         y_min, y_max = -1, 1
-        
+
         self.y_minvar = tk.StringVar(value=str(y_min))
 
         self.y_maxvar = tk.StringVar(value=str(y_max))
@@ -142,7 +123,6 @@ class InspectorProfile(tk.Frame):
         self.autotxt.set('Auto')
         self.autobtn = ttk.Button(self, textvariable=self.autotxt, command=self.set_auto)
         self.autobtn.grid(column=0, row=3, columnspan=3)
-
 
         self.intmethodlbl = ttk.Label(self, text='Integration method: ', font=MED_FONT)
         self.intmethodlbl.grid(column=0, row=4, columnspan=2, padx=10, pady=10)
@@ -207,7 +187,7 @@ class InspectorProfile(tk.Frame):
         # change description
         self.description_text.set(int_method.description)
 
-        ## change solver
+        # change solver
         self.parent.controller.eq.setSolver(int_method)
 
     def set_auto(self):
@@ -243,14 +223,14 @@ class InspectorProfile(tk.Frame):
         self.y_maxvar.set(ymax)
 
     def setTime(self, t):
-        self.ellapsed_time_var.set(str(round(t,4)))
+        self.ellapsed_time_var.set(str(round(t, 4)))
+
 
 class InspectorSpatiotemporal(tk.Frame):
 
     def __init__(self, parent):
-
         tk.Frame.__init__(self, parent)
-        #self.ax2 = ax2
+        # self.ax2 = ax2
         self.parent = parent
 
         self.titlelbl = ttk.Label(self, text='Inspector: Spatiotemporal diagram', font=LARGE_FONT)
@@ -261,6 +241,7 @@ class InspectorSpatiotemporal(tk.Frame):
 
     def deactivate(self):
         pass
+
 
 class InspectorWindow(tk.Frame):
 
@@ -283,7 +264,7 @@ class InspectorWindow(tk.Frame):
 
     def showProfile(self):
         print('showing profile')
-        self.showFrame(self.profile)   
+        self.showFrame(self.profile)
 
     def showSpatiotemp(self):
         print('showing spatiotemp')
@@ -292,7 +273,6 @@ class InspectorWindow(tk.Frame):
     def showFrame(self, frame):
         frame.tkraise()
         # frame.activate()
-
 
 
 class ParameterWindow:
@@ -308,20 +288,20 @@ class ParameterWindow:
 
         self.titlelbl = ttk.Label(self.root, text='Parameters', width=15, font=LARGE_FONT)
         self.paramslbls = [ttk.Label(self.root, text=self.parameters[p].name, font=MED_FONT) for p in self.parameters]
-        self.paramsvals = [ttk.Entry(self.root, textvariable=self.parameters[p].var, font=MED_FONT) for p in self.parameters]
+        self.paramsvals = [ttk.Entry(self.root, textvariable=self.parameters[p].var, font=MED_FONT) for p in
+                           self.parameters]
 
         self.titlelbl.grid(column=0, row=0, columnspan=3)
         for i in range(len(self.paramslbls)):
-            self.paramslbls[i].grid(column=0, row=i+1, columnspan=1)
-            self.paramsvals[i].grid(column=1, row=i+1, columnspan=2)
+            self.paramslbls[i].grid(column=0, row=i + 1, columnspan=1)
+            self.paramsvals[i].grid(column=1, row=i + 1, columnspan=2)
 
         self.resetBtn = ttk.Button(self.root, text='Reset', command=self.reset)
-        self.resetBtn.grid(column=0, row=len(self.paramslbls)+1)
+        self.resetBtn.grid(column=0, row=len(self.paramslbls) + 1)
 
     def reset(self):
         for p in self.eq.initParams:
             self.parameters[p].var.set(str(self.eq.initParams[p]))
-
 
 
 class MainPage(tk.Frame):
@@ -336,24 +316,24 @@ class MainPage(tk.Frame):
         tk.Frame.__init__(self, parent)
 
         btn1 = ttk.Button(self, text='Back home',
-                        command=self.back_home)
+                          command=self.back_home)
         btn1.grid(row=0, column=0)
 
         label = ttk.Label(self, text='Interactive simulation', font=LARGE_FONT)
         label.grid(row=0, column=1)
 
         btn2 = ttk.Button(self, text='Reset',
-                        command=self.controller.eq.setInitialConditionZero)
+                          command=self.controller.eq.setInitialConditionZero)
         btn2.grid(row=0, column=2)
 
         ### Initialize plot
-        #x = np.arange(10)
-        #y = x**2
+        # x = np.arange(10)
+        # y = x**2
 
         # change line?
-        #line, = a.plot(x, y)
-        #lb = LineBuilder(line)
-        #line, = fig.add_subplot(111).plot(x, y)
+        # line, = a.plot(x, y)
+        # lb = LineBuilder(line)
+        # line, = fig.add_subplot(111).plot(x, y)
 
     def deactivate(self):
 
@@ -388,39 +368,36 @@ class MainPage(tk.Frame):
         self.released = False
         self.i_release = 0
 
-
         self.btn_container = tk.Frame(self)
         self.btn_container.grid(row=1, columnspan=3)
 
-
         self.btn_e = ttk.Button(self.btn_container, text='Edit',
-                        command=self.edit)
+                                command=self.edit)
         self.btn_e.grid(row=0, column=0)
 
         self.btn_play = ttk.Button(self.btn_container, text='Play',
-                        command=self.play)
-        self.btn_play.grid(row=0, column=1)        
+                                   command=self.play)
+        self.btn_play.grid(row=0, column=1)
 
         self.btn_pause = ttk.Button(self.btn_container, text='Pause',
-                        command=self.pause)
+                                    command=self.pause)
         self.btn_pause.grid(row=0, column=2)
 
         self.btn_params = ttk.Button(self.btn_container, text='Params',
-                        command=self.open_params)
+                                     command=self.open_params)
         self.btn_params.grid(row=0, column=3)
 
         self.btn_eq = ttk.Button(self.btn_container, text='Equation',
-                        command=self.open_equation)
-        self.btn_eq.grid(row=0, column=4)        
+                                 command=self.open_equation)
+        self.btn_eq.grid(row=0, column=4)
 
         self.btn_insp = ttk.Button(self.btn_container, text='Inspector',
-                        command=self.open_inspector)
+                                   command=self.open_inspector)
         self.btn_insp.grid(row=0, column=5)
 
         ## assuming eq and init cond are already defined
         eq = self.controller.eq
         eq.updateX()
-
 
         ### create param window
 
@@ -430,7 +407,7 @@ class MainPage(tk.Frame):
 
         ### initialize plot and draw
 
-        self.fig = Figure(figsize=(5,5), dpi=100)
+        self.fig = Figure(figsize=(5, 5), dpi=100)
         self.ax = self.fig.add_subplot(211)
         self.ax.set_xlabel('x')
         self.ax.set_ylabel('u')
@@ -438,7 +415,7 @@ class MainPage(tk.Frame):
         self.eqX = eq.x
         self.Fields = eq.getInitCondFields()
 
-        #self.line, = self.ax.plot(eq.x, eq.initCond)
+        # self.line, = self.ax.plot(eq.x, eq.initCond)
         self.draw_fields()
 
         ## Spatiotemporal diagram
@@ -448,12 +425,12 @@ class MainPage(tk.Frame):
         x0 = eq.x[0]
         xf = eq.x[-1]
         self.im = self.ax2.imshow(self.imvals, extent=[x0, xf, 0, ST_ROWS], aspect='auto')
-        #self.ax2.set_xlabel('x')
+        # self.ax2.set_xlabel('x')
         self.ax2.set_ylabel('t')
         self.fig.colorbar(self.im, ax=self.ax2, orientation='horizontal')
 
         ## Draw canvas
-        
+
         self.container_mpl = tk.Frame(self)
 
         self.canvas = FigureCanvasTkAgg(self.fig, self.container_mpl)
@@ -463,23 +440,21 @@ class MainPage(tk.Frame):
         self.canvas.mpl_connect('button_release_event', self.off_click)
         self.canvas.mpl_connect('motion_notify_event', self.move_click)
 
-
         self.toolbar = NavigationToolbar2Tk(self.canvas, self.container_mpl)
         self.toolbar.update()
         self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        #self.container_mpl.geometry('512x740')
+        # self.container_mpl.geometry('512x740')
         self.container_mpl.grid(row=2, column=0, columnspan=3, sticky='ns')
 
-
-        #self.rowconfigure(0, weight=1)
+        # self.rowconfigure(0, weight=1)
         self.rowconfigure(2, weight=1)
 
-        #self.columnconfigure(0, weight=1)
+        # self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
-        #self.columnconfigure(2, weight=1)
+        # self.columnconfigure(2, weight=1)
 
         self.isEditing = False
         self.isPaused = False
@@ -507,7 +482,7 @@ class MainPage(tk.Frame):
     def play(self):
         if not self.isPaused: return
         self.isPaused = False
-        #self.release = True
+        # self.release = True
         # if self.isEditing:
         #     self.isEditing = False
         #     self.released = True
@@ -541,12 +516,11 @@ class MainPage(tk.Frame):
             if self.isEditing:
                 self.clicked = True
                 self.updateY(event.xdata, event.ydata)
-            #self.animate(-1)
-            #print(event.xdata, event.ydata)
+            # self.animate(-1)
+            # print(event.xdata, event.ydata)
         elif event.inaxes == self.ax2:
             self.inspector.showSpatiotemp()
             self.controller.activePlot = (self.ax2, SPATIOTEMPORAL)
-
 
     def off_click(self, event):
         if self.clicked:
@@ -560,7 +534,7 @@ class MainPage(tk.Frame):
     def move_click(self, event):
         if event.inaxes == self.ax and self.clicked:
             self.updateY(event.xdata, event.ydata)
-            #self.animate(-1)
+            # self.animate(-1)
 
     def stop_animation(self):
         self.anim_stopped = True
@@ -619,8 +593,8 @@ class MainPage(tk.Frame):
         eq.updateX()
 
         if i == -1:
-            i = self.last_i # no estuy usando
-    
+            i = self.last_i  # no estuy usando
+
             if self.released:
                 print('Released!')
                 self.activeFieldToCurrent()
@@ -630,22 +604,22 @@ class MainPage(tk.Frame):
                 return self.lines
 
         elif not self.isPaused:
-            self.last_i = i # tpco toy usando
+            self.last_i = i  # tpco toy usando
 
         # if self.released:
         #     self.i_release = i
         #     self.released = False
 
         # if self.isEditing:
-            # self.Fields[self.inspector.profile.active_field_indx] = self.active_Field
+        # self.Fields[self.inspector.profile.active_field_indx] = self.active_Field
         #     self.update_fields()
         #     #self.line.figure.canvas.draw()
-            # return self.lines
+        # return self.lines
 
         if self.isPaused or self.isEditing:
             return self.lines + [self.im]
 
-        k = (i-self.i_release) % ST_ROWS
+        k = (i - self.i_release) % ST_ROWS
         # k = i % ST_ROWS
         # print(f'i = {i}, i_r = {self.i_release}, i_s = {self.i_start_pause}, k = {k}, k_spatiotemp = {k_spatiotemp}.')
         # print(i, k)
@@ -660,11 +634,11 @@ class MainPage(tk.Frame):
             self.im = self.ax2.imshow(np.zeros((ST_ROWS, eq.N)), extent=[x0, xf, 0, ST_ROWS], aspect='auto')
             self.mustClear = False
         else:
-            self.update_fields() # draw fields
-            self.imvals[self.k_spatiotemp, :] = self.Fields[0] # for the moment
+            self.update_fields()  # draw fields
+            self.imvals[self.k_spatiotemp, :] = self.Fields[0]  # for the moment
             self.im.set_data(self.imvals)
 
-            self.k_spatiotemp = (self.k_spatiotemp + 1)% 60
+            self.k_spatiotemp = (self.k_spatiotemp + 1) % 60
 
             xmin = np.min(self.Fields)
             xmax = np.max(self.Fields)
@@ -675,11 +649,11 @@ class MainPage(tk.Frame):
             self.im.set_clim(vmin, vmax)
             self.ax.set_xlim(eq.x[0], eq.x[-1])
             if self.inspector.profile.auto_ylim:
-                ymin = vmin - abs(vmin)/10
-                ymax = vmax + abs(vmax)/10
+                ymin = vmin - abs(vmin) / 10
+                ymax = vmax + abs(vmax) / 10
 
-                self.ax.set_ylim(min(ymin, xmin - abs(xmin)/10), max(ymax, xmax + abs(xmax)/10))
-                self.inspector.profile.set_ylim(min(ymin, xmin - abs(xmin)/10), max(ymax, xmax + abs(xmax)/10))
+                self.ax.set_ylim(min(ymin, xmin - abs(xmin) / 10), max(ymax, xmax + abs(xmax) / 10))
+                self.inspector.profile.set_ylim(min(ymin, xmin - abs(xmin) / 10), max(ymax, xmax + abs(xmax) / 10))
             else:
                 ymin, ymax = self.inspector.profile.get_ylim()
                 if ymin is not None:
@@ -689,18 +663,18 @@ class MainPage(tk.Frame):
         self.t += eq.getParam('dt')
         return self.lines + [self.im]
 
-    def raw_xtoi(self, x): # from raw_x to i
+    def raw_xtoi(self, x):  # from raw_x to i
         return self.xtoi(x, isRaw=True)
-        
+
     def xtoi(self, x, isRaw=False, truncate=False):
         x0 = self.controller.eq.x[0]
         xf = self.controller.eq.x[-1]
         Ni = round(self.controller.eq.N / self.controller.eq.n_fields)
         _N = RAW_N if isRaw else Ni
-        i = (x - x0)/(xf - x0) * _N
+        i = (x - x0) / (xf - x0) * _N
         if not truncate:
             i = round(i)
-        return int(i)      
+        return int(i)
 
     def x0xf_to_xs(self, x0, xf):
         pass
@@ -712,14 +686,14 @@ class MainPage(tk.Frame):
 
     def updateY(self, xdata, ydata):
         xi = self.xtoi(xdata)
-        #self.active_Field = self.Fields[self.inspector.profile.active_field_indx]
+        # self.active_Field = self.Fields[self.inspector.profile.active_field_indx]
         self.resetActiveField()
         if xi < len(self.active_Field) - 4 and xi >= 4:
 
             ### interpolate
             raw_dx = (self.controller.eq.x[-1] - self.controller.eq.x[0]) / (RAW_N - 1)
-            x0 = xdata - raw_dx/2
-            xf = xdata + raw_dx/2
+            x0 = xdata - raw_dx / 2
+            xf = xdata + raw_dx / 2
 
             i_0 = self.xtoi(x0)
             i_f = self.xtoi(xf)
@@ -729,11 +703,11 @@ class MainPage(tk.Frame):
             ys_interval = np.array([self.active_Field[i_0], ydata, self.active_Field[i_f]])
             ys_interp = interp1d(xs_interval, ys_interval)
 
-            i_0 = self.xtoi(xdata - raw_dx/2)
-            i_f = self.xtoi(xdata + raw_dx/2)
+            i_0 = self.xtoi(xdata - raw_dx / 2)
+            i_f = self.xtoi(xdata + raw_dx / 2)
 
             # replace old values of ys
-            self.active_Field[i_0:i_f+1] = ys_interp(self.controller.eq.x[i_0:i_f+1])
+            self.active_Field[i_0:i_f + 1] = ys_interp(self.controller.eq.x[i_0:i_f + 1])
         elif xi < 4:
             self.active_Field[0:4] = ydata
         else:
@@ -744,5 +718,4 @@ class MainPage(tk.Frame):
     def clear(self):
         self.ax.clear()
         self.mustClear = True
-        #self.line, = self.ax.plot([], [])
-
+        # self.line, = self.ax.plot([], [])

@@ -14,14 +14,13 @@ class EqKink(Equation):
 		
 
 	def rhs(self, t, x): # CB periodica
-		dx = self.parameters['dx'].getVal()
-		eps = self.parameters['eps'].getVal()
-		alpha = self.parameters['alpha'].getVal()
+		v = self.getCurrentParams()
+		dx = v['dx']; eps = v['eps']; alpha = v['alpha']
 
 		y = alpha + eps*x - x**3  + Laplace1D(x, dx, neumann=True)
 		return y
 
 	def setInitialConditionKink(self):
 		self.updateX()
-		eps = self.parameters['eps'].getVal()
+		eps = self.getParam('eps')
 		self.initCond = np.sqrt(eps) * np.tanh(self.x * np.sqrt(eps/2))
