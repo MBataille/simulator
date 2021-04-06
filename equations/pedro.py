@@ -1,5 +1,5 @@
 from tkinter import *
-from .equation import Equation, Laplace1D, Parameter
+from .equation import Equation, Parameter
 import numpy as np
 
 class Pedro(Equation):
@@ -19,7 +19,7 @@ class Pedro(Equation):
 		v = self.getCurrentParams()
 		dx = v['dx']; eps = v['eps']; eta = v['eta']; gamma = v['gamma']; k = v['k']; omega = v['omega']
 
-		y = eta + eps*x - x**3  + Laplace1D(x, dx, neumann=True) + gamma * np.cos(k*self.x) * np.sin(omega*t)
+		y = eta + eps*x - x**3  + self.Laplace1D(x) + gamma * np.cos(k*self.x) * np.sin(omega*t)
 		return y
 
 	def setInitialConditionKink(self):

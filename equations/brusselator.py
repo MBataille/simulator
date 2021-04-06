@@ -1,5 +1,5 @@
 from tkinter import *
-from .equation import Equation, Laplace1D, Parameter
+from .equation import Equation, Parameter
 import numpy as np
 
 class Brusselator(Equation):
@@ -21,9 +21,7 @@ class Brusselator(Equation):
 		X = x[:round(self.N/2)]
 		Y = x[round(self.N/2):]
 
-		dX = A + X*(X*Y - B - 1) + Laplace1D(X, dx, neumann=True)
-		dY = X*(B -X*Y) + Laplace1D(Y, dx, neumann=True)
+		dX = A + X*(X*Y - B - 1) + self.Laplace1D(X)
+		dY = X*(B -X*Y) + self.Laplace1D(Y)
 
 		return np.append(dX, dY)
-
-	

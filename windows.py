@@ -21,13 +21,15 @@ from solvers import INTEGRATION_METHODS
 
 from equations.allequations import ALL_EQUATIONS
 
-LARGE_FONT = ('Arial', 16)
-MED_FONT = ('Arial', 10)
+LARGE_FONT = ('Helvetica', 16)
+MED_FONT = ('Helvetica', 11)
 COLORS = 'none blue orange green red purple brown pink gray olive cyan'.split(' ')
 
 PROFILE = 'profile'
 SPATIOTEMPORAL = 'spatiotemporal'
 IMAGESFOLDER = 'images/'
+
+ICONSFOLDER = 'icons/'
 
 style.use('ggplot')
 
@@ -39,6 +41,7 @@ class ImageWindow(tk.Frame):
     def __init__(self, master, filename):
         tk.Frame.__init__(self, master)
         self.master = master
+        self.master.title('Equation')
 
         load = Image.open(IMAGESFOLDER + filename)
         w, h = load.size
@@ -59,27 +62,53 @@ class StartPage(tk.Frame):
 
         tk.Frame.__init__(self, parent)
         label = ttk.Label(self, text='Interactive simulation interface', font=LARGE_FONT)
-        label.grid(row=0, column=0, columnspan=2)
+        label.grid(row=0, column=0, columnspan=2,  padx=10, pady=5)
 
         self.parent = parent
         self.controller = controller
 
-        self.eq_listbox = tk.Listbox(self)
+        self.eq_listbox = tk.Listbox(self, activestyle='dotbox')
         for eqname in ALL_EQUATIONS:
             self.eq_listbox.insert(tk.END, eqname)
 
+        self.eq_lbl = ttk.Label(self, text='Choose equation', font=MED_FONT)
+        self.ic_lbl = ttk.Label(self, text='Choose initial condition', font=MED_FONT)
+
+        self.eq_lbl.grid(row=1, column=0, padx=10, pady=5)
+        self.ic_lbl.grid(row=1, column=1, sticky='ew', padx=5, pady=5)
+
         self.eq_listbox.bind('<<ListboxSelect>>', self.change_select_eq)
-        self.eq_listbox.grid(row=1, column=0)
+        self.eq_listbox.grid(row=2, column=0, padx=5, pady=5, sticky='e')
 
         self.eq_listbox.activate(0)
 
         self.initcond_listbox = tk.Listbox(self)
         self.fill_initcond_listbox()
-        self.initcond_listbox.grid(row=1, column=1)
+        self.initcond_listbox.bind('<<ListboxSelect>>', self.change_select_ic)
+
+        self.initcond_listbox.grid(row=2, column=1, padx=5, pady=5, sticky='w')
+
+        self.n_lbl = ttk.Label(self, text='Number of pts =  ', font=MED_FONT)
+        self.n_lbl.grid(row=3, column=0, padx=5, pady=5, sticky='e')
+
+        self.n_var = tk.StringVar(value='200')
+        self.n_ent = tk.Entry(self, textvariable=self.n_var)
+        self.n_ent.grid(row=3, column=1, padx=5, pady=5, sticky='w')
+
+        self.statustext = tk.StringVar()
+        self.statuslbl = ttk.Label(self, textvariable=self.statustext)
+        self.statuslbl.grid(row=4, column=0, columnspan=2)
 
         btn_next = ttk.Button(self, text='Continue',
                               command=self.cont)
-        btn_next.grid(row=2, column=0, columnspan=2)
+        btn_next.grid(row=5, column=0, columnspan=2)
+
+        #self.rowconfigure(0, weight=1)
+        #self.rowconfigure(1, weight=1)
+        #   self.rowconfigure(2, weight=1)
+
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
 
     def activate(self):
         pass
@@ -105,10 +134,34 @@ class StartPage(tk.Frame):
             self.controller.setEq(name)
             self.fill_initcond_listbox()
 
+    def change_select_ic(self, event):
+        selection = event.widget.curselection()
+        if selection:
+            index = selection[0]
+            if not self.controller.initCond_isMethod(index):
+                self.controller.setEqInitCond(index)
+                Ni = self.controller.getEqInitCond_N()
+                self.n_var.set(str(Ni))
+                self.n_ent.configure(state='readonly')
+            else:
+                self.n_ent.configure(state=tk.NORMAL)
+
     def cont(self):
         index = self.initcond_listbox.curselection()[0]
         print(f'selected {self.initcond_listbox.get(index)} initcond')
-        self.controller.setEqInitCond(index)
+
+        try:
+            Ni = int(self.n_var.get())
+        except ValueError as e:
+            self.statustext.set('Please enter a valid value for N')
+            return
+
+        if self.controller.initCond_isMethod(index):
+            self.controller.setEqNi(Ni)
+            self.controller.setEqInitCond(index)
+
+        else: # interpolate
+            pass
         self.controller.show_frame(MainPage)
 
 
@@ -168,10 +221,13 @@ class InspectorProfile(tk.Frame):
         self.ellapsed_time_val_lbl = ttk.Label(self, textvariable=self.ellapsed_time_var)
         self.ellapsed_time_val_lbl.grid(row=6, column=1, padx=5, pady=5)
 
+        self.elapsed_time_reset_btn = ttk.Button(self, text='Reset', command=self.reset_time)
+        self.elapsed_time_reset_btn.grid(row=6, column=2, padx=5, pady=5)
+
         self.choosefieldbl = ttk.Label(self, text='Show field: ', font=MED_FONT)
         self.choosefieldbl.grid(column=0, row=7, padx=10, pady=10)
 
-        self.choosefieldcbox = ttk.Combobox(self, state='readonly')
+        self.choosefieldcbox = ttk.Combobox(self, state='readonly', width=10)
         self.choosefieldcbox['values'] = self.parent.controller.eq.fieldNames
         self.choosefieldcbox.bind('<<ComboboxSelected>>', self.change_field)
         self.choosefieldcbox.current(0)
@@ -183,11 +239,14 @@ class InspectorProfile(tk.Frame):
 
         self.current_colors = [_i + 1 for _i in range(self.parent.controller.eq.n_fields)]
 
-        self.choosecolorbox = ttk.Combobox(self, state='readonly')
+        self.choosecolorbox = ttk.Combobox(self, state='readonly', width=10)
         self.choosecolorbox['values'] = COLORS
         self.choosecolorbox.bind('<<ComboboxSelected>>', self.change_color)
         self.choosecolorbox.current(self.current_colors[0])
         self.choosecolorbox.grid(column=3, row=7)
+
+    def reset_time(self):
+        self.parent.mainpg.t = 0
 
     def change_field(self, event):
         mainpg = self.parent.mainpg
@@ -314,8 +373,8 @@ class EntryWindow:
         self.status = ttk.Label(self.root, textvariable=self.statustext, font=MED_FONT)
 
         self.txtlbl.grid(row=0, column=0, columnspan=2)
-        self.entry.grid(row=1, column=0)
-        self.savebtn.grid(row=1, column=1)
+        self.entry.grid(row=1, column=0, padx=5, pady=5)
+        self.savebtn.grid(row=1, column=1, padx=5, pady=5)
         self.status.grid(row=2, column=0, columnspan=2)
 
     def save(self):
@@ -371,8 +430,9 @@ class MainPage(tk.Frame):
 
         tk.Frame.__init__(self, parent)
 
+        self.btn1img = tk.PhotoImage(file=ICONSFOLDER + 'back.png')
         btn1 = ttk.Button(self, text='Back home',
-                          command=self.back_home)
+                          command=self.back_home, image=self.btn1img)
         btn1.grid(row=0, column=0)
 
         label = ttk.Label(self, text='Interactive simulation', font=LARGE_FONT)
@@ -422,37 +482,46 @@ class MainPage(tk.Frame):
         self.mustClear = False
         self.clicked = False
         self.released = False
-        self.i_release = 0
+        self.i_release = 0 
 
         self.btn_container = tk.Frame(self)
         self.btn_container.grid(row=1, columnspan=3)
 
+        self.playimg = tk.PhotoImage(file=ICONSFOLDER + 'play.png')
+        self.editimg = tk.PhotoImage(file=ICONSFOLDER + 'pen2.png')
+        self.pauseimg = tk.PhotoImage(file=ICONSFOLDER + 'pause.png')
+        self.inspimg = tk.PhotoImage(file=ICONSFOLDER + 'info.png')
+        self.eqimg = tk.PhotoImage(file=ICONSFOLDER + 'equation.png')
+        self.paramimg = tk.PhotoImage(file=ICONSFOLDER + 'params.png')
+        self.saveimg = tk.PhotoImage(file=ICONSFOLDER + 'save.png')
+
+
         self.btn_e = ttk.Button(self.btn_container, text='Edit',
-                                command=self.edit)
+                                command=self.edit, image=self.editimg)
         self.btn_e.grid(row=0, column=0)
 
         self.btn_play = ttk.Button(self.btn_container, text='Play',
-                                   command=self.play)
+                                   command=self.play, image=self.playimg)
         self.btn_play.grid(row=0, column=1)
 
         self.btn_pause = ttk.Button(self.btn_container, text='Pause',
-                                    command=self.pause)
+                                    command=self.pause, image=self.pauseimg)
         self.btn_pause.grid(row=0, column=2)
 
         self.btn_pause = ttk.Button(self.btn_container, text='Save',
-                                    command=self.save)
+                                    command=self.save, image=self.saveimg)
         self.btn_pause.grid(row=0, column=3)
 
         self.btn_params = ttk.Button(self.btn_container, text='Param',
-                                     command=self.open_params)
+                                     command=self.open_params, image=self.paramimg)
         self.btn_params.grid(row=0, column=4)
 
         self.btn_eq = ttk.Button(self.btn_container, text='Eq',
-                                 command=self.open_equation)
+                                 command=self.open_equation, image=self.eqimg)
         self.btn_eq.grid(row=0, column=5)
 
         self.btn_insp = ttk.Button(self.btn_container, text='Insp',
-                                   command=self.open_inspector)
+                                   command=self.open_inspector, image=self.inspimg)
         self.btn_insp.grid(row=0, column=6)
 
         ## assuming eq and init cond are already defined

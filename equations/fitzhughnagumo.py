@@ -1,5 +1,5 @@
 from tkinter import *
-from .equation import Equation, Laplace1D, Parameter
+from .equation import Equation, Parameter
 import numpy as np
 
 class FitzHughNagumo(Equation):
@@ -21,8 +21,8 @@ class FitzHughNagumo(Equation):
 		V = x[:self.Ni]
 		Omega = x[self.Ni:]
 
-		dV = V - V**3 / 3 - Omega + I + Laplace1D(V, dx, neumann=True)
-		dOmega = 1/tau * (V + a - b * Omega + Laplace1D(Omega, dx, neumann=True))
+		dV = V - V**3 / 3 - Omega + I + self.Laplace1D(V)
+		dOmega = 1/tau * (V + a - b * Omega + self.Laplace1D(Omega))
 
 		return np.append(dV, dOmega)
 

@@ -9,6 +9,7 @@ import os
 from solvers import INTEGRATION_METHODS
 
 DATAFOLDER = 'data/'
+ALL_BOUNDARY_CONDITIONS = 'neumann periodic'.split(' ')
 
 class Parameter:
     def __init__(self, name, var):
@@ -24,19 +25,7 @@ class Parameter:
         except ValueError:
             return self.val
 
-def Laplace1D(x, dx, neumann=False):
-    laplace = (np.roll(x, 1) + np.roll(x, -1) - 2*x)/(dx*dx)
-    if neumann:
-        laplace[0] = 2 * (x[1] - x[0]) / (dx*dx)
-        laplace[-1] = 2 * (x[-2] - x[-1]) / (dx*dx)
-    return laplace
 
-def Derivx(x, dx, neumann=False):
-    derivx = (np.roll(x, -1) - np.roll(x, 1)) / (2*dx)
-    if neumann:
-        derivx[0] = 0
-        derivx[-1] = 0
-    return derivx
 
 class Equation:
     def __init__(self, name, initParams, dim=1, N=200, isComplex=False, img=None, n_fields=1, fieldNames=['u']):
@@ -48,14 +37,19 @@ class Equation:
         self.isComplex = isComplex
         self.fieldNames = fieldNames
 
+        self.boundary_condition = 'neumann'
+
         # initialize w/ some solver
         self.solver = INTEGRATION_METHODS[0]
 
         self.n_fields = n_fields
 
         # each field will have N points
-        self.Ni = N
-        self.N = n_fields * N
+        self.setNi(N)
+
+    def setNi(self, Ni):
+        self.Ni = Ni
+        self.N = self.n_fields * Ni
 
     def setSolver(self, solver):
         self.solver = solver
@@ -129,7 +123,9 @@ class Equation:
         data = np.load(folder + filename + '.npz')
 
         self.setInitialCondition(data['vals'])
-        self.initParams = self.arraytoInitParams(data['pnames'], data['pvals'])
+        self.Ni = int(data['pvals'][0])
+        self.N = int(self.Ni * self.n_fields)
+        self.initParams = self.arraytoInitParams(data['pnames'][1:], data['pvals'][1:])
         self.parameters = self.createParamsDict(self.initParams)
 
     def arraytoInitParams(self, pnames, pvals):
@@ -140,16 +136,15 @@ class Equation:
 
     def paramsToArray(self):
         v = self.getCurrentParams()
-        pnames = []
-        pvals = []
+        pnames = ['Ni']
+        pvals = [self.Ni]
         for p in v:
             pnames.append(p)
             pvals.append(v[p])
         return np.array(pnames), np.array(pvals)
 
     def getFields(self, k):
-        Ni = round(self.N / self.n_fields)
-        return [self.sol[i * Ni : (i + 1) * Ni, k] for i in range(self.n_fields)]
+        return self.extractFields(self.sol[:, k])
 
     def getField(self, i, k):
         if self.n_fields == 1:
@@ -157,14 +152,24 @@ class Equation:
         Ni = self.Ni
         return self.sol[i * Ni:(i + 1) * Ni, k]
 
+    def extractFields(self, X):
+        Ni = self.Ni
+        return [X[i * Ni : (i + 1) * Ni] for i in range(self.n_fields)]
+
     def getInitCondFields(self):
         Ni = self.Ni
+        print(Ni, self.N, self.n_fields)
         return [self.initCond[i * Ni : (i + 1) * Ni] for i in range(self.n_fields)]
 
     def setInitCondFields(self, fields):
         Ni = self.Ni
-        for i in range(len(fields)):
-            self.initCond[i * Ni: (i+1) * Ni] = fields[i]
+        try:
+            for i in range(len(fields)):
+                self.initCond[i * Ni: (i+1) * Ni] = fields[i]
+        except AttributeError:
+            self.setInitialConditionZero()
+            self.setInitCondFields(fields)
+
 
     def getInitialConditions(self):
         """ returns a list of strings with the name of each initial condition method
@@ -186,3 +191,24 @@ class Equation:
 
         return [fname.replace('.npz', '') for fname in filenames]
 
+    def Laplace1D(self, x):
+        dx = self.getParam('dx')
+        laplace = (np.roll(x, 1) + np.roll(x, -1) - 2*x)/(dx*dx)
+        if self.boundary_condition == 'neumann':
+            laplace[0] = 2 * (x[1] - x[0]) / (dx*dx)
+            laplace[-1] = 2 * (x[-2] - x[-1]) / (dx*dx)
+        return laplace
+
+    def Derivx(self, x):
+        dx = self.getParam('dx')
+        derivx = (np.roll(x, -1) - np.roll(x, 1)) / (2*dx)
+        if self.boundary_condition =='neumann':
+            derivx[0] = 0
+            derivx[-1] = 0
+        return derivx
+
+    def getBoundaryCondition(self):
+        return self.boundary_condition
+
+    def getAllBoundaryConditions(self):
+        return ALL_BOUNDARY_CONDITIONS

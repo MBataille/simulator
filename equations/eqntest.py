@@ -1,5 +1,5 @@
 from tkinter import *
-from .equation import Equation, Laplace1D, Parameter
+from .equation import Equation, Parameter
 import numpy as np
 
 class EqKink(Equation):
@@ -17,7 +17,7 @@ class EqKink(Equation):
 		v = self.getCurrentParams()
 		dx = v['dx']; eps = v['eps']; alpha = v['alpha']
 
-		y = alpha + eps*x - x**3  + Laplace1D(x, dx, neumann=True)
+		y = alpha + eps*x - x**3  + self.Laplace1D(x)
 		return y
 
 	def setInitialConditionKink(self):

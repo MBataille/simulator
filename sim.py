@@ -23,6 +23,8 @@ class SimApp(tk.Tk):
 		# t.Tk.iconbitmap(self, default='clienticon.ico')
 		tk.Tk.wm_title(self, 'Simulator')
 		self.geometry('512x768')
+		self.style = ttk.Style()
+		self.style.theme_use('clam') 
 		container = tk.Frame(self)
 
 		container.pack(side='top', fill='both', expand=True)
@@ -63,21 +65,41 @@ class SimApp(tk.Tk):
 		self.initConds =  self.eq.getInitialConditions(), self.eq.getSavedStatesNames()
 		return self.initConds[0] + self.initConds[1]
 
-	def setEqInitCond(self, indx):
+	def initCond_isMethod(self, indx):
 		n_methods = len(self.initConds[0])
-		if indx >= n_methods: # initial condition is a saved state
-			self.eq.loadState(self.initConds[1][indx - n_methods])
-#			initParams = self.eq.initParams
-#			name = self.eq.name
-#			self.eq = 
-		else: # intial condition comes from a method
+		if indx < n_methods:
+			return True
+		return False
+
+	def setEqNi(self, Ni): # eventually interpolate
+		self.eq.setNi(Ni)
+
+	def getEqInitCond_N(self): # assuming init cond is already loaded
+		return self.eq.Ni
+
+	def setEqInitCond(self, indx):
+		if self.initCond_isMethod(indx):
 			getattr(self.eq, 'setInitialCondition' + self.initConds[0][indx])()
+		else:
+			n_methods = len(self.initConds[0])
+			self.eq.loadState(self.initConds[1][indx - n_methods])
 
 
 	def setEq(self, name):
 		### eq should be a string or sth
 		self.eq = ALL_EQUATIONS[name]()
 
+	def getBoundaryCondition(self):
+		return self.eq.getBoundaryCondition()
+
+	def setBoundaryCondition(self, bc):
+		if bc in self.getListBoundaryConditions():
+			self.eq.setBoundaryCondition(bc)
+			return True
+		return False
+
+	def getListBoundaryConditions(self):
+		return self.eq.getAllBoundaryConditions()
 
 	def show_frame(self, cont):
 		# Raise frame to the top
