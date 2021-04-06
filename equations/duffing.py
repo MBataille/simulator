@@ -34,3 +34,6 @@ class Duffing(Equation):
 		X = np.random.normal(size=self.Ni)
 		dXdt = np.zeros(self.Ni)
 		self.setInitCondFields((X, dXdt))
+
+	def getAllBoundaryConditions(self):
+		return ['periodic']

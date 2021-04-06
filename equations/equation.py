@@ -212,3 +212,6 @@ class Equation:
 
     def getAllBoundaryConditions(self):
         return ALL_BOUNDARY_CONDITIONS
+
+    def setBoundaryCondition(self, bc):
+        self.boundary_condition = bc

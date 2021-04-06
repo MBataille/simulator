@@ -214,28 +214,38 @@ class InspectorProfile(tk.Frame):
         self.descriptionlbl = ttk.Label(self, textvariable=self.description_text, font=MED_FONT)
         self.descriptionlbl.grid(row=5, column=0, columnspan=3, padx=5, pady=5, sticky='e')
 
+        self.bc_lbl = ttk.Label(self, text='Boundary Condition: ', font=MED_FONT)
+        self.bc_lbl.grid(row=6, column=0, columnspan=2)
+
+        self.bc_combobox = ttk.Combobox(self, state='readonly', width=10)
+        self.bc_combobox['values'] = self.parent.mainpg.controller.getListBoundaryConditions()
+        self.bc_combobox.bind('<<ComboboxSelected>>', self.change_bc)
+        self.bc_combobox.current(0) # neumann
+
+        self.bc_combobox.grid(row=6, column=3)
+
         self.ellapsed_time_desc_lbl = ttk.Label(self, text='Ellapsed time: ', font=MED_FONT)
-        self.ellapsed_time_desc_lbl.grid(row=6, column=0, padx=5, pady=5)
+        self.ellapsed_time_desc_lbl.grid(row=7, column=0, padx=5, pady=5)
 
         self.ellapsed_time_var = tk.StringVar(value='0')
         self.ellapsed_time_val_lbl = ttk.Label(self, textvariable=self.ellapsed_time_var)
-        self.ellapsed_time_val_lbl.grid(row=6, column=1, padx=5, pady=5)
+        self.ellapsed_time_val_lbl.grid(row=7, column=1, padx=5, pady=5)
 
         self.elapsed_time_reset_btn = ttk.Button(self, text='Reset', command=self.reset_time)
-        self.elapsed_time_reset_btn.grid(row=6, column=2, padx=5, pady=5)
+        self.elapsed_time_reset_btn.grid(row=7, column=2, padx=5, pady=5)
 
         self.choosefieldbl = ttk.Label(self, text='Show field: ', font=MED_FONT)
-        self.choosefieldbl.grid(column=0, row=7, padx=10, pady=10)
+        self.choosefieldbl.grid(column=0, row=8, padx=10, pady=10)
 
         self.choosefieldcbox = ttk.Combobox(self, state='readonly', width=10)
         self.choosefieldcbox['values'] = self.parent.controller.eq.fieldNames
         self.choosefieldcbox.bind('<<ComboboxSelected>>', self.change_field)
         self.choosefieldcbox.current(0)
-        self.choosefieldcbox.grid(column=1, row=7)
+        self.choosefieldcbox.grid(column=1, row=8)
         self.active_field_indx = 0
 
         self.choosecolorlbl = ttk.Label(self, text='Color: ', font=MED_FONT)
-        self.choosecolorlbl.grid(column=2, row=7)
+        self.choosecolorlbl.grid(column=2, row=8)
 
         self.current_colors = [_i + 1 for _i in range(self.parent.controller.eq.n_fields)]
 
@@ -243,7 +253,11 @@ class InspectorProfile(tk.Frame):
         self.choosecolorbox['values'] = COLORS
         self.choosecolorbox.bind('<<ComboboxSelected>>', self.change_color)
         self.choosecolorbox.current(self.current_colors[0])
-        self.choosecolorbox.grid(column=3, row=7)
+        self.choosecolorbox.grid(column=3, row=8)
+
+    def change_bc(self, event):
+        indx = self.bc_combobox.current()
+        self.parent.mainpg.controller.setBoundaryCondition(indx)
 
     def reset_time(self):
         self.parent.mainpg.t = 0
@@ -454,6 +468,7 @@ class MainPage(tk.Frame):
     def deactivate(self):
 
         self.active = False
+        self.btn_container.grid_forget()
         self.killParamWindow()
         self.killInspectorWindow()
         self.killImageWindow()
@@ -496,31 +511,31 @@ class MainPage(tk.Frame):
         self.saveimg = tk.PhotoImage(file=ICONSFOLDER + 'save.png')
 
 
-        self.btn_e = ttk.Button(self.btn_container, text='Edit',
+        self.btn_e = ttk.Button(self.btn_container,
                                 command=self.edit, image=self.editimg)
         self.btn_e.grid(row=0, column=0)
 
-        self.btn_play = ttk.Button(self.btn_container, text='Play',
+        self.btn_play = ttk.Button(self.btn_container,
                                    command=self.play, image=self.playimg)
         self.btn_play.grid(row=0, column=1)
 
-        self.btn_pause = ttk.Button(self.btn_container, text='Pause',
+        self.btn_pause = ttk.Button(self.btn_container,
                                     command=self.pause, image=self.pauseimg)
         self.btn_pause.grid(row=0, column=2)
 
-        self.btn_pause = ttk.Button(self.btn_container, text='Save',
+        self.btn_pause = ttk.Button(self.btn_container,
                                     command=self.save, image=self.saveimg)
         self.btn_pause.grid(row=0, column=3)
 
-        self.btn_params = ttk.Button(self.btn_container, text='Param',
+        self.btn_params = ttk.Button(self.btn_container, 
                                      command=self.open_params, image=self.paramimg)
         self.btn_params.grid(row=0, column=4)
 
-        self.btn_eq = ttk.Button(self.btn_container, text='Eq',
+        self.btn_eq = ttk.Button(self.btn_container,
                                  command=self.open_equation, image=self.eqimg)
         self.btn_eq.grid(row=0, column=5)
 
-        self.btn_insp = ttk.Button(self.btn_container, text='Insp',
+        self.btn_insp = ttk.Button(self.btn_container,
                                    command=self.open_inspector, image=self.inspimg)
         self.btn_insp.grid(row=0, column=6)
 

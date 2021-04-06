@@ -92,9 +92,10 @@ class SimApp(tk.Tk):
 	def getBoundaryCondition(self):
 		return self.eq.getBoundaryCondition()
 
-	def setBoundaryCondition(self, bc):
-		if bc in self.getListBoundaryConditions():
-			self.eq.setBoundaryCondition(bc)
+	def setBoundaryCondition(self, indx):
+		allbcs = self.getListBoundaryConditions()
+		if indx < len(allbcs):
+			self.eq.setBoundaryCondition(allbcs[indx])
 			return True
 		return False
 
