@@ -5,14 +5,14 @@ import numpy as np
 class FitzHughNagumo(Equation):
 
 	def __init__(self):
-		self.initParams = { 'dt' : 0.1,
+		initParams = { 'dt' : 0.1,
 					'dx': 0.5, 
 					'I': 1, 
 					'a': 1,
 					'b': 1,
 					'tau': 1}
 
-		Equation.__init__(self, 'FHN', 1, self.createParamsDict(self.initParams), n_fields=2, N=400, fieldNames=['v', 'w'])
+		Equation.__init__(self, 'FitzHugh-Nagumo', initParams, dim=1, n_fields=2, N=200, fieldNames=['v', 'w'])
 
 	def rhs(self, t, x):
 		v = self.getCurrentParams()

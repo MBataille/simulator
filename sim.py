@@ -11,6 +11,8 @@ from windows import StartPage, MainPage
 from equations.allequations import ALL_EQUATIONS
 
 
+DATAFOLDER = 'data/'
+
 class SimApp(tk.Tk):
 	
 	def __init__(self, *args, **kwargs):
@@ -32,14 +34,9 @@ class SimApp(tk.Tk):
 
 		pages = (StartPage, MainPage)
 
-		##### ACA SE CAMBIA LA ECUACION #####
+		self.initDataFolders()
 
-
-		# Ecuacion de kinks 'basica': 
-		# self.setEq(EqKink)
-
-		# Ecuacion de pedro:
-		self.setEq(ALL_EQUATIONS['Brusselator'])
+		self.setEq('Brusselator')
 		self.eq.setInitialConditionZero()
 
 		for F in pages:
@@ -53,13 +50,36 @@ class SimApp(tk.Tk):
 		### load eq and init cond
 
 
-	def setEq(self, eq):
+	def initDataFolders(self):
+		# check if data folder exists
+		if not os.path.exists(DATAFOLDER):
+			os.mkdir(DATAFOLDER)
+
+		for eqname in ALL_EQUATIONS:
+			if not os.path.exists(DATAFOLDER + eqname):
+				os.mkdir(DATAFOLDER + eqname)
+
+	def getEqInitConds(self):
+		self.initConds =  self.eq.getInitialConditions(), self.eq.getSavedStatesNames()
+		return self.initConds[0] + self.initConds[1]
+
+	def setEqInitCond(self, indx):
+		n_methods = len(self.initConds[0])
+		if indx >= n_methods: # initial condition is a saved state
+			self.eq.loadState(self.initConds[1][indx - n_methods])
+#			initParams = self.eq.initParams
+#			name = self.eq.name
+#			self.eq = 
+		else: # intial condition comes from a method
+			getattr(self.eq, 'setInitialCondition' + self.initConds[0][indx])()
+
+
+	def setEq(self, name):
 		### eq should be a string or sth
-		self.eq = eq()
+		self.eq = ALL_EQUATIONS[name]()
 
 
 	def show_frame(self, cont):
-
 		# Raise frame to the top
 		frame = self.frames[cont]
 		frame.tkraise()

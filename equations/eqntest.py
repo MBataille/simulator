@@ -5,12 +5,12 @@ import numpy as np
 class EqKink(Equation):
 	'''params: dt, dx, alfa'''
 	def __init__(self):
-		self.initParams = { 'dt' : 0.1,
+		initParams = { 'dt' : 0.1,
 							'dx': 0.5, 
 							'eps': 1, 
 							'alpha': 0 }
 
-		Equation.__init__(self, 'Test', 1,  self.createParamsDict(self.initParams))
+		Equation.__init__(self, 'Eqntest', initParams, dim=1)
 		
 
 	def rhs(self, t, x): # CB periodica

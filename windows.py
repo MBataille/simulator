@@ -27,6 +27,7 @@ COLORS = 'none blue orange green red purple brown pink gray olive cyan'.split(' 
 
 PROFILE = 'profile'
 SPATIOTEMPORAL = 'spatiotemporal'
+IMAGESFOLDER = 'images/'
 
 style.use('ggplot')
 
@@ -39,7 +40,7 @@ class ImageWindow(tk.Frame):
         tk.Frame.__init__(self, master)
         self.master = master
 
-        load = Image.open(filename)
+        load = Image.open(IMAGESFOLDER + filename)
         w, h = load.size
 
         self.master.geometry(str(w) + 'x' + str(h))
@@ -58,21 +59,27 @@ class StartPage(tk.Frame):
 
         tk.Frame.__init__(self, parent)
         label = ttk.Label(self, text='Interactive simulation interface', font=LARGE_FONT)
-        label.pack(pady=10, padx=10)
+        label.grid(row=0, column=0, columnspan=2)
 
         self.parent = parent
         self.controller = controller
 
-        self.listbox = tk.Listbox(self)
+        self.eq_listbox = tk.Listbox(self)
         for eqname in ALL_EQUATIONS:
-            self.listbox.insert(tk.END, eqname)
+            self.eq_listbox.insert(tk.END, eqname)
 
-        self.listbox.bind('<<ListboxSelect>>', self.change_select)
-        self.listbox.pack()
+        self.eq_listbox.bind('<<ListboxSelect>>', self.change_select_eq)
+        self.eq_listbox.grid(row=1, column=0)
+
+        self.eq_listbox.activate(0)
+
+        self.initcond_listbox = tk.Listbox(self)
+        self.fill_initcond_listbox()
+        self.initcond_listbox.grid(row=1, column=1)
 
         btn_next = ttk.Button(self, text='Continue',
-                              command=lambda: controller.show_frame(MainPage))
-        btn_next.pack()
+                              command=self.cont)
+        btn_next.grid(row=2, column=0, columnspan=2)
 
     def activate(self):
         pass
@@ -80,13 +87,29 @@ class StartPage(tk.Frame):
     def deactivate(self):
         pass
 
-    def change_select(self, event):
+    def clear_initcond_listbox(self):
+        last = self.initcond_listbox.size() - 1
+        self.initcond_listbox.delete(0, last=last)
+
+    def fill_initcond_listbox(self):
+        self.clear_initcond_listbox()
+        initconds = self.controller.getEqInitConds()
+        for initcond in initconds:
+            self.initcond_listbox.insert(tk.END, initcond)
+
+    def change_select_eq(self, event):
         selection = event.widget.curselection()
         if selection:
             index = selection[0]
-            data = event.widget.get(index)
-            self.controller.setEq(ALL_EQUATIONS[data])
-            self.controller.eq.setInitialConditionZero()
+            name = event.widget.get(index)
+            self.controller.setEq(name)
+            self.fill_initcond_listbox()
+
+    def cont(self):
+        index = self.initcond_listbox.curselection()[0]
+        print(f'selected {self.initcond_listbox.get(index)} initcond')
+        self.controller.setEqInitCond(index)
+        self.controller.show_frame(MainPage)
 
 
 class InspectorProfile(tk.Frame):
@@ -274,6 +297,39 @@ class InspectorWindow(tk.Frame):
         frame.tkraise()
         # frame.activate()
 
+class EntryWindow:
+
+    def __init__(self, root, mainpg, eq, k_sol):
+
+        self.root = root
+        self.eq = eq
+        self.k_sol = k_sol
+        self.mainpg = mainpg
+
+        self.txtlbl = ttk.Label(self.root, text='Insert name', font=MED_FONT)
+        self.entry = ttk.Entry(self.root)
+        self.savebtn = ttk.Button(self.root, text='save', command=self.save)
+
+        self.statustext = tk.StringVar()
+        self.status = ttk.Label(self.root, textvariable=self.statustext, font=MED_FONT)
+
+        self.txtlbl.grid(row=0, column=0, columnspan=2)
+        self.entry.grid(row=1, column=0)
+        self.savebtn.grid(row=1, column=1)
+        self.status.grid(row=2, column=0, columnspan=2)
+
+    def save(self):
+        name = self.entry.get()
+        if not self.eq.isState(name):
+            self.eq.saveState(self.k_sol, name)
+            self.die()
+        else:
+            self.statustext.set('Name already exists. Please insert another one')
+
+    def die(self):
+        self.mainpg.play()
+        self.mainpg.kill_entry_window()
+
 
 class ParameterWindow:
 
@@ -383,17 +439,21 @@ class MainPage(tk.Frame):
                                     command=self.pause)
         self.btn_pause.grid(row=0, column=2)
 
-        self.btn_params = ttk.Button(self.btn_container, text='Params',
+        self.btn_pause = ttk.Button(self.btn_container, text='Save',
+                                    command=self.save)
+        self.btn_pause.grid(row=0, column=3)
+
+        self.btn_params = ttk.Button(self.btn_container, text='Param',
                                      command=self.open_params)
-        self.btn_params.grid(row=0, column=3)
+        self.btn_params.grid(row=0, column=4)
 
-        self.btn_eq = ttk.Button(self.btn_container, text='Equation',
+        self.btn_eq = ttk.Button(self.btn_container, text='Eq',
                                  command=self.open_equation)
-        self.btn_eq.grid(row=0, column=4)
+        self.btn_eq.grid(row=0, column=5)
 
-        self.btn_insp = ttk.Button(self.btn_container, text='Inspector',
+        self.btn_insp = ttk.Button(self.btn_container, text='Insp',
                                    command=self.open_inspector)
-        self.btn_insp.grid(row=0, column=5)
+        self.btn_insp.grid(row=0, column=6)
 
         ## assuming eq and init cond are already defined
         eq = self.controller.eq
@@ -488,6 +548,11 @@ class MainPage(tk.Frame):
         #     self.released = True
         self.animate(-1)
 
+    def save(self):
+        self.pause()
+        self.create_entry_window()
+        #self.controller.eq.saveState(self.k_sol, f'k_{self.k_sol}')
+
     def open_params(self):
         try:
             if self.parentParamWindow.state() == 'normal':
@@ -508,6 +573,13 @@ class MainPage(tk.Frame):
                 self.parentInspectorWindow.focus_set()
         except Exception as e:
             self.createInspectorWindow(self.controller.eq)
+
+    def create_entry_window(self):
+        self.parentEntryWindow = tk.Toplevel(self)
+        self.entrywindow = EntryWindow(self.parentEntryWindow, self, self.controller.eq, self.k_sol)
+
+    def kill_entry_window(self):
+        self.parentEntryWindow.destroy()
 
     def on_click(self, event):
         if event.inaxes == self.ax:

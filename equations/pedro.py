@@ -5,7 +5,7 @@ import numpy as np
 class Pedro(Equation):
 
 	def __init__(self):
-		self.initParams = { 'dt' : 0.1,
+		initParams = { 'dt' : 0.1,
 							'dx': 0.5, 
 							'eps': 1, 
 							'eta': 0,
@@ -13,9 +13,9 @@ class Pedro(Equation):
 							'k': 0.07,
 							'omega': 2}
 
-		Equation.__init__(self, 'KMOEP', 1, self.createParamsDict(self.initParams))
+		Equation.__init__(self, 'Pedro', initParams, dim=1)
 		
-	def rhs(self, t, x): # CB libre
+	def rhs(self, t, x): 
 		v = self.getCurrentParams()
 		dx = v['dx']; eps = v['eps']; eta = v['eta']; gamma = v['gamma']; k = v['k']; omega = v['omega']
 

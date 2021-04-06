@@ -5,12 +5,12 @@ import numpy as np
 class Brusselator(Equation):
 
 	def __init__(self):
-		self.initParams = { 'dt' : 0.1,
+		initParams = { 'dt' : 0.1,
 					'dx': 0.5, 
 					'A': 1, 
 					'B': 3}
 
-		Equation.__init__(self, 'Brusselator', 1, self.createParamsDict(self.initParams), n_fields=2, N=400, fieldNames=['x', 'y'])
+		Equation.__init__(self, 'Brusselator', initParams, dim=1, n_fields=2, N=200, fieldNames=['x', 'y'])
 
 	def rhs(self, t, x):
 		v = self.getCurrentParams()
