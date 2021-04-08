@@ -22,12 +22,17 @@ class Parameter:
     def getVal(self):
         try:
             val = float(self.var.get())
+            if val == 0 and cantBeZero(self.name):
+                return self.val
             self.val = val
             return self.val
         except ValueError:
             return self.val
 
-
+def cantBeZero(name):
+    if name == 'dt' or name == 'dx':
+        return True
+    return False
 
 class Equation:
     def __init__(self, name, initParams, dim=1, N=200, isComplex=False, n_fields=1, fieldNames=['u']):

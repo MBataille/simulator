@@ -417,14 +417,20 @@ class ParameterWindow:
         self.update = update
 
         self.titlelbl = ttk.Label(self.root, text='Parameters', width=15, font=LARGE_FONT)
-        self.paramslbls = [ttk.Label(self.root, text=self.parameters[p].name, font=MED_FONT) for p in self.parameters]
-        self.paramsvals = [ttk.Entry(self.root, textvariable=self.parameters[p].var, font=MED_FONT) for p in
-                           self.parameters]
-
+        self.paramsvals = []
+        self.paramslbls = []
         self.titlelbl.grid(column=0, row=0, columnspan=3)
-        for i in range(len(self.paramslbls)):
-            self.paramslbls[i].grid(column=0, row=i + 1, columnspan=1)
-            self.paramsvals[i].grid(column=1, row=i + 1, columnspan=2)
+
+        i = 0
+        for p in self.parameters:
+            lbl = ttk.Label(self.root, text=self.parameters[p].name, font=MED_FONT)
+            lbl.grid(column=0, row=i + 1, columnspan=1)
+            self.paramslbls.append(lbl)
+
+            vals = ttk.Entry(self.root, textvariable=self.parameters[p].var, font=MED_FONT)
+            vals.grid(column=1, row=i + 1, columnspan=2)
+            self.paramsvals.append(vals)
+            i += 1
 
         self.resetBtn = ttk.Button(self.root, text='Reset', command=self.reset)
         self.resetBtn.grid(column=0, row=len(self.paramslbls) + 1)
@@ -611,6 +617,7 @@ class MainPage(tk.Frame):
         self.k_spatiotemp = 0
         self.k_sol = 0
         self.t = 0
+        self.last_params = eq.getCurrentParams()
 
         self.inspector.profile.setAx(self.ax)
         ### Start animation
@@ -781,11 +788,14 @@ class MainPage(tk.Frame):
         if self.isPaused or self.isEditing:
             return self.lines + [self.im]
 
+        new_params = eq.getCurrentParams()
+
+
         k = (i - self.i_release) % ST_ROWS
         # k = i % ST_ROWS
         # print(f'i = {i}, i_r = {self.i_release}, i_s = {self.i_start_pause}, k = {k}, k_spatiotemp = {k_spatiotemp}.')
         # print(i, k)
-        if self.k_sol == 0:
+        if self.k_sol == 0 or new_params != self.last_params:
             self.solve_cycle()
         self.Fields = eq.getFields(self.k_sol)
         self.resetActiveField()
@@ -809,13 +819,16 @@ class MainPage(tk.Frame):
             vmax = np.max(self.imvals)
 
             self.im.set_clim(vmin, vmax)
-            self.ax.set_xlim(eq.x[0], eq.x[-1])
+            self.im.set_extent([eq.x[0], eq.x[-1], 0, ST_ROWS])
+            
             if self.inspector.profile.auto_ylim:
                 ymin = vmin - abs(vmin) / 10
                 ymax = vmax + abs(vmax) / 10
 
                 self.ax.set_ylim(min(ymin, xmin - abs(xmin) / 10), max(ymax, xmax + abs(xmax) / 10))
                 self.inspector.profile.set_ylim(min(ymin, xmin - abs(xmin) / 10), max(ymax, xmax + abs(xmax) / 10))
+
+                self.ax.set_xlim(eq.x[0], eq.x[-1])
             else:
                 ymin, ymax = self.inspector.profile.get_ylim()
                 if ymin is not None:
@@ -823,6 +836,7 @@ class MainPage(tk.Frame):
 
         self.k_sol = (self.k_sol + 1) % ST_ROWS
         self.t += eq.getParam('dt')
+        self.last_params = eq.getCurrentParams()
         return self.lines + [self.im]
 
     def raw_xtoi(self, x):  # from raw_x to i
