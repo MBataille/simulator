@@ -11,6 +11,8 @@ from solvers import INTEGRATION_METHODS
 DATAFOLDER = 'data/'
 ALL_BOUNDARY_CONDITIONS = 'neumann periodic'.split(' ')
 
+T0_UPPER_BOUND = 1e6
+
 class Parameter:
     def __init__(self, name, var):
         self.name = name
@@ -28,14 +30,14 @@ class Parameter:
 
 
 class Equation:
-    def __init__(self, name, initParams, dim=1, N=200, isComplex=False, img=None, n_fields=1, fieldNames=['u']):
+    def __init__(self, name, initParams, dim=1, N=200, isComplex=False, n_fields=1, fieldNames=['u']):
         self.name = name
         self.dim = dim
-        self.img = img
         self.initParams = initParams
         self.parameters = self.createParamsDict(initParams)
         self.isComplex = isComplex
         self.fieldNames = fieldNames
+        self.t0 = 0
 
         self.boundary_condition = 'neumann'
 
@@ -72,7 +74,10 @@ class Equation:
         return cparams
 
     def setInitialCondition(self, vals):
-        self.initCond = vals
+        if type(vals) == tuple:
+            self.setInitCondFields(vals)
+        else:
+            self.initCond = vals
 
     def setInitCondIncoherent(self):
         self.setInitialCondition(0.99 * np.exp(1j * np.random.rand(self.N, self.N) * 2 * np.pi - np.pi))
@@ -85,20 +90,38 @@ class Equation:
             self.initCond = np.zeros((self.N, self.N), dtype=dtype)
 
     def solve(self):
+        if self.t0 > T0_UPPER_BOUND:
+            self.t0 = 0
+
         dt = self.getParam('dt')
-        t = np.linspace(0, 60*dt, 61) # change this
+        t = self.t0 + np.linspace(0, 60*dt, 61) # change this
         # print(t, dt, self.initCond)
         with threadpool_limits(limits=1):
             if self.dim == 1:
-                self.sol = self.solver.solve(self.rhs, (0, 60*dt), self.initCond, t)
+                self.sol = self.solver.solve(self.wrhs, (t[0], t[-1]), self.initCond, t)
             elif self.dim == 2:
-                self.sol = self.solver.solve(self.rhs, (0, dt), self.initCond.reshape(self.N * self.N), t)
+                self.sol = self.solver.solve(self.wrhs, (t[0], t[-1]), self.initCond.reshape(self.N * self.N), t)
+        self.t0 = t[-1]
+
+    def wrhs(self, t, u):
+        """Wrapper for RHS"""
+        if self.n_fields == 1:
+            return self.rhs(t, u)
+        else:
+            fields = self.extractFields(u)
+            d_fields_dt = self.rhs(t, *fields)
+            return self.assembleFields(d_fields_dt)
+        
 
     def updateX(self):
         dx = self.parameters['dx'].getVal()
         Ni = round(self.N / self.n_fields)
         X = (Ni-1)*dx/2
         self.x = np.linspace(-X, X, Ni)
+
+    def getX(self):
+        self.updateX()
+        return self.x
 
     def getState(self, k):
         if self.n_fields > 1:
@@ -156,6 +179,12 @@ class Equation:
         Ni = self.Ni
         return [X[i * Ni : (i + 1) * Ni] for i in range(self.n_fields)]
 
+    def assembleFields(self, fields):
+        assembled = np.zeros(self.N)
+        for i in range(len(fields)):
+            assembled[i * self.Ni: (i+1) * self.Ni] = fields[i]
+        return assembled
+
     def getInitCondFields(self):
         Ni = self.Ni
         print(Ni, self.N, self.n_fields)
@@ -163,12 +192,7 @@ class Equation:
 
     def setInitCondFields(self, fields):
         Ni = self.Ni
-        try:
-            for i in range(len(fields)):
-                self.initCond[i * Ni: (i+1) * Ni] = fields[i]
-        except AttributeError:
-            self.setInitialConditionZero()
-            self.setInitCondFields(fields)
+        self.initCond = self.assembleFields(fields)
 
 
     def getInitialConditions(self):
@@ -177,9 +201,9 @@ class Equation:
         """
         methods = [method_name.replace('setInitialCondition', '') for method_name in dir(self)
                   if callable(getattr(self, method_name)) and 'setInitialCondition' in method_name
-                   and 'setInitialCondition' != method_name]
+                   and method_name != 'setInitialCondition' and method_name != 'setInitialConditionZero']
         
-        return methods
+        return ['Zero'] + methods
 
     def getDataFolder(self):
         return DATAFOLDER + self.name + '/'

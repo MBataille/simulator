@@ -67,9 +67,10 @@ class StartPage(tk.Frame):
         self.parent = parent
         self.controller = controller
 
-        self.eq_listbox = tk.Listbox(self, activestyle='dotbox')
+        self.eq_listbox = tk.Listbox(self)
         for eqname in ALL_EQUATIONS:
             self.eq_listbox.insert(tk.END, eqname)
+        self.eq_listbox.selection_set(0)
 
         self.eq_lbl = ttk.Label(self, text='Choose equation', font=MED_FONT)
         self.ic_lbl = ttk.Label(self, text='Choose initial condition', font=MED_FONT)
@@ -80,11 +81,9 @@ class StartPage(tk.Frame):
         self.eq_listbox.bind('<<ListboxSelect>>', self.change_select_eq)
         self.eq_listbox.grid(row=2, column=0, padx=5, pady=5, sticky='e')
 
-        self.eq_listbox.activate(0)
-
         self.initcond_listbox = tk.Listbox(self)
-        self.fill_initcond_listbox()
         self.initcond_listbox.bind('<<ListboxSelect>>', self.change_select_ic)
+        self.fill_initcond_listbox()       
 
         self.initcond_listbox.grid(row=2, column=1, padx=5, pady=5, sticky='w')
 
@@ -125,6 +124,7 @@ class StartPage(tk.Frame):
         initconds = self.controller.getEqInitConds()
         for initcond in initconds:
             self.initcond_listbox.insert(tk.END, initcond)
+        self.initcond_listbox.selection_set(0)
 
     def change_select_eq(self, event):
         selection = event.widget.curselection()
@@ -152,7 +152,7 @@ class StartPage(tk.Frame):
 
         try:
             Ni = int(self.n_var.get())
-        except ValueError as e:
+        except ValueError:
             self.statustext.set('Please enter a valid value for N')
             return
 
@@ -258,6 +258,7 @@ class InspectorProfile(tk.Frame):
     def change_bc(self, event):
         indx = self.bc_combobox.current()
         self.parent.mainpg.controller.setBoundaryCondition(indx)
+        self.parent.mainpg.solve_cycle()
 
     def reset_time(self):
         self.parent.mainpg.t = 0
@@ -303,7 +304,7 @@ class InspectorProfile(tk.Frame):
             y_min = float(self.y_minvar.get())
             y_max = float(self.y_maxvar.get())
             return y_min, y_max
-        except ValueError as e:
+        except ValueError:
             return None, None
 
     def activate(self):
@@ -453,7 +454,7 @@ class MainPage(tk.Frame):
         label.grid(row=0, column=1)
 
         btn2 = ttk.Button(self, text='Reset',
-                          command=self.controller.eq.setInitialConditionZero)
+                          command=self.resetInitCond)
         btn2.grid(row=0, column=2)
 
         ### Initialize plot
@@ -464,6 +465,11 @@ class MainPage(tk.Frame):
         # line, = a.plot(x, y)
         # lb = LineBuilder(line)
         # line, = fig.add_subplot(111).plot(x, y)
+
+    def resetInitCond(self):
+        self.controller.resetEqInitCond()
+        # solve
+        self.solve_cycle()
 
     def deactivate(self):
 
@@ -831,9 +837,6 @@ class MainPage(tk.Frame):
         if not truncate:
             i = round(i)
         return int(i)
-
-    def x0xf_to_xs(self, x0, xf):
-        pass
 
     def xstois(self, xs):
         i_s = np.zeros(len(xs), dtype='int64')

@@ -14,16 +14,13 @@ class FitzHughNagumo(Equation):
 
 		Equation.__init__(self, 'FitzHugh-Nagumo', initParams, dim=1, n_fields=2, N=200, fieldNames=['v', 'w'])
 
-	def rhs(self, t, x):
+	def rhs(self, t, V, W):
 		v = self.getCurrentParams()
 		dx = v['dx']; I = v['I']; a = v['a']; b = v['b']; tau = v['tau']
 
-		V = x[:self.Ni]
-		Omega = x[self.Ni:]
+		dV = V - V**3 / 3 - W + I + self.Laplace1D(V)
+		dW = 1/tau * (V + a - b * W + self.Laplace1D(W))
 
-		dV = V - V**3 / 3 - Omega + I + self.Laplace1D(V)
-		dOmega = 1/tau * (V + a - b * Omega + self.Laplace1D(Omega))
-
-		return np.append(dV, dOmega)
+		return (dV, dW)
 
 	

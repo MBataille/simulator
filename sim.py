@@ -79,11 +79,15 @@ class SimApp(tk.Tk):
 
 	def setEqInitCond(self, indx):
 		if self.initCond_isMethod(indx):
-			getattr(self.eq, 'setInitialCondition' + self.initConds[0][indx])()
+			func = getattr(self.eq, 'setInitialCondition' + self.initConds[0][indx])()
 		else:
 			n_methods = len(self.initConds[0])
 			self.eq.loadState(self.initConds[1][indx - n_methods])
+	
+		self.current_initcond_indx = indx
 
+	def resetEqInitCond(self):
+		self.setEqInitCond(self.current_initcond_indx)
 
 	def setEq(self, name):
 		### eq should be a string or sth
