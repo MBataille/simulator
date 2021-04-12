@@ -23,6 +23,11 @@ class Duffing(Equation):
 
 		X_nm = np.roll(X, 1) # x_n-1
 		X_np = np.roll(X, -1) # x_n+1
+
+		if self.boundary_condition == 'neumann':
+			X_nm[0] = X[1]
+			X_np[-1] = X[-2]
+
 		d2Xdt2 = X * (-1 - 2*kappa) + alpha * X ** 3 - X ** 5 - mu * dXdt \
 						+ gamma * np.cos(omega * t) + (kappa + delta) * X_np + (kappa - delta) * X_nm
 
@@ -32,6 +37,3 @@ class Duffing(Equation):
 		X = 0.3 * np.random.normal(size=self.Ni)
 		dXdt = np.zeros(self.Ni)
 		self.setInitialCondition((X, dXdt))
-
-	def getAllBoundaryConditions(self):
-		return ['periodic']
