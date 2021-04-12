@@ -142,19 +142,24 @@ class Equation:
 
     def saveState(self, k, filename):
         folder = self.getDataFolder()
-        _vals = self.sol[:, k]
+        fields = self.getFields(k)
+        fields_dict = {field_name:fields[i] for i, field_name in enumerate(self.fieldNames)}
         _pnames, _pvals = self.paramsToArray()
-        np.savez_compressed(folder + filename + '.npz', vals=_vals, pnames=_pnames, pvals=_pvals)
+        np.savez_compressed(folder + filename + '.npz', paramnames=_pnames, paramvals=_pvals, x=self.getX(), **fields_dict)
 
     def loadState(self, filename):
         folder = self.getDataFolder()
         data = np.load(folder + filename + '.npz')
 
-        self.setInitialCondition(data['vals'])
-        self.Ni = int(data['pvals'][0])
+        # load parameters and N
+        self.Ni = int(data['paramvals'][0])
         self.N = int(self.Ni * self.n_fields)
-        self.initParams = self.arraytoInitParams(data['pnames'][1:], data['pvals'][1:])
+        self.initParams = self.arraytoInitParams(data['paramnames'][1:], data['paramvals'][1:])
         self.parameters = self.createParamsDict(self.initParams)
+
+        # load initial condition
+        fields = [data[field_name] for field_name in self.fieldNames]
+        self.setInitialCondition(self.assembleFields(fields))
 
     def arraytoInitParams(self, pnames, pvals):
         initParams = {}
