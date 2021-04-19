@@ -10,7 +10,7 @@ from solvers import INTEGRATION_METHODS
 
 DATAFOLDER = 'data/'
 ALL_BOUNDARY_CONDITIONS = 'neumann periodic'.split(' ')
-
+RECORD_FILENAME = 'state'
 T0_UPPER_BOUND = 1e6
 
 class Parameter:
@@ -108,6 +108,9 @@ class Equation:
                 self.sol = self.solver.solve(self.wrhs, (t[0], t[-1]), self.initCond.reshape(self.N * self.N), t)
         self.t0 = t[-1]
 
+    def rhs(self, t, u):
+        return u
+
     def wrhs(self, t, u):
         """Wrapper for RHS"""
         if self.n_fields == 1:
@@ -140,6 +143,30 @@ class Equation:
         folder = self.getDataFolder()
         return os.path.exists(folder + filename + '.npz')
 
+    def isFolder(self, foldername):
+        folder = self.getDataFolder()
+        return os.path.exists(folder + foldername)
+
+    def startRecording(self, foldername):
+        # assuming this folder doesn't exists yet
+        path = self.getDataFolder() + foldername
+        if not self.isFolder(foldername):
+            os.mkdir(path)
+        self.k_recording = 0
+        self.foldername_recording = foldername + '/'
+
+    def getRecordStateName(self, k):
+        return RECORD_FILENAME + f'_{k}' 
+
+    def saveRecord(self, k_sol):
+        self.k_recording += 1
+        filename = self.foldername_recording + self.getRecordStateName(self.k_recording)
+        self.saveState(k_sol, filename)
+
+    def stopRecording(self):
+        self.k_recording = None
+        self.path_recording = None
+
     def saveState(self, k, filename):
         folder = self.getDataFolder()
         _vals = self.sol[:, k]
@@ -148,6 +175,11 @@ class Equation:
 
     def loadState(self, filename):
         folder = self.getDataFolder()
+
+        if os.path.isdir(folder + filename):
+            self.loadState(filename + '/' + self.getRecordStateName(1))
+            return
+
         data = np.load(folder + filename + '.npz')
 
         self.setInitialCondition(data['vals'])
@@ -196,7 +228,6 @@ class Equation:
         return [self.initCond[i * Ni : (i + 1) * Ni] for i in range(self.n_fields)]
 
     def setInitCondFields(self, fields):
-        Ni = self.Ni
         self.initCond = self.assembleFields(fields)
 
 
@@ -217,8 +248,9 @@ class Equation:
         # get list of files in data/equation/
         folder = self.getDataFolder()
         _, _, filenames = next(os.walk(folder))
+        foldernames = next(os.walk(folder))[1]
 
-        return [fname.replace('.npz', '') for fname in filenames]
+        return [fname.replace('.npz', '') for fname in filenames] + foldernames
 
     def Laplace1D(self, x):
         dx = self.getParam('dx')
@@ -244,3 +276,6 @@ class Equation:
 
     def setBoundaryCondition(self, bc):
         self.boundary_condition = bc
+
+    def getN(self):
+        return self.Ni

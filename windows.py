@@ -25,6 +25,8 @@ LARGE_FONT = ('Helvetica', 16)
 MED_FONT = ('Helvetica', 11)
 COLORS = 'none blue orange green red purple brown pink gray olive cyan'.split(' ')
 
+COLORMAPS = 'viridis plasma hot cool coolwarm hsv jet'.split(' ')
+
 PROFILE = 'profile'
 SPATIOTEMPORAL = 'spatiotemporal'
 IMAGESFOLDER = 'images/'
@@ -272,7 +274,6 @@ class InspectorProfile(tk.Frame):
 
     def change_color(self, event):
         new_color = self.choosecolorbox.current()
-        mainpg = self.parent.mainpg
         if self.current_colors[self.active_field_indx] != new_color:
             self.current_colors[self.active_field_indx] = new_color
             self.parent.mainpg.redraw_fields()
@@ -308,16 +309,15 @@ class InspectorProfile(tk.Frame):
             return None, None
 
     def activate(self):
-        pass
+        self.grid(row=0, column=0)
 
     def deactivate(self):
-        pass
+        self.grid_forget()
 
     def setAx(self, ax):
         self.ax = ax
         ymin, ymax = self.ax.get_ylim()
-        self.y_minvar.set(ymin)
-        self.y_maxvar.set(ymax)
+        self.set_ylim(ymin, ymax)
 
     def setTime(self, t):
         self.ellapsed_time_var.set(str(round(t, 4)))
@@ -327,17 +327,102 @@ class InspectorSpatiotemporal(tk.Frame):
 
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
-        # self.ax2 = ax2
         self.parent = parent
 
         self.titlelbl = ttk.Label(self, text='Inspector: Spatiotemporal diagram', font=LARGE_FONT)
         self.titlelbl.grid(column=0, row=0, columnspan=3, padx=20, pady=10)
 
+        self.v_minlbl = ttk.Label(self, text='v_min', font=MED_FONT)
+        self.v_maxlbl = ttk.Label(self, text='v_max', font=MED_FONT)
+
+        self.v_minlbl.grid(column=0, row=2, columnspan=2)
+        self.v_maxlbl.grid(column=0, row=1, columnspan=2)
+
+        v_min, v_max = -1, 1
+
+        self.v_minvar = tk.StringVar(value=str(v_min))
+
+        self.v_maxvar = tk.StringVar(value=str(v_max))
+
+        self.v_minval = ttk.Entry(self, textvariable=self.v_minvar, font=MED_FONT)
+        self.v_maxval = ttk.Entry(self, textvariable=self.v_maxvar, font=MED_FONT)
+
+        self.v_minval.grid(column=3, row=2)
+        self.v_maxval.grid(column=3, row=1)
+
+        self.auto_vlim = True
+        self.autotxt = tk.StringVar()
+        self.autotxt.set('Auto')
+        self.autobtn = ttk.Button(self, textvariable=self.autotxt, command=self.set_auto)
+        self.autobtn.grid(column=0, row=3, columnspan=3)
+
+
+        self.choosefieldbl = ttk.Label(self, text='Show field: ', font=MED_FONT)
+        self.choosefieldbl.grid(column=0, row=4, padx=10, pady=10)
+
+        self.choosefieldcbox = ttk.Combobox(self, state='readonly', width=10)
+        self.choosefieldcbox['values'] = self.parent.controller.eq.fieldNames
+        self.choosefieldcbox.bind('<<ComboboxSelected>>', self.change_field)
+        self.choosefieldcbox.current(0)
+        self.choosefieldcbox.grid(column=1, row=4)
+        self.active_field_indx = 0
+
+        self.choosecolorlbl = ttk.Label(self, text='Colormap: ', font=MED_FONT)
+        self.choosecolorlbl.grid(column=0, row=5)
+
+        self.active_cmap = 0
+        self.choosecolorbox = ttk.Combobox(self, state='readonly', width=10)
+        self.choosecolorbox['values'] = COLORMAPS
+        self.choosecolorbox.bind('<<ComboboxSelected>>', self.change_cmap)
+        self.choosecolorbox.current(0)
+        self.choosecolorbox.grid(column=1, row=5)
+
+    def setIm(self, im):
+        self.im = im
+        vmin, vmax = self.im.get_clim()
+        self.set_vlim(vmin, vmax)
+
+    def set_vlim(self, vmin, vmax):
+        self.v_minvar.set(str(vmin))
+        self.v_maxvar.set(str(vmax))
+
+    def get_vlim(self):
+        try:
+            v_min = float(self.v_minvar.get())
+            v_max = float(self.v_maxvar.get())
+            return v_min, v_max
+        except ValueError:
+            return None, None      
+
+    def set_auto(self):
+        if self.auto_vlim:
+            self.auto_vlim = False
+            self.autotxt.set('Manual')
+        else:
+            self.auto_vlim = True
+            self.autotxt.set('Auto')
+
+    def change_field(self, event):
+        new_active_field_indx = self.choosefieldcbox.current()
+        if new_active_field_indx != self.active_field_indx:
+            self.active_field_indx = new_active_field_indx
+            self.parent.mainpg.redraw_spatiotemp_field()
+
+
+    def change_cmap(self, event):
+        new_active_cmap = self.choosecolorbox.current()
+        if new_active_cmap != self.active_cmap:
+            self.active_cmap = new_active_cmap
+            self.parent.mainpg.replot_spatiotemp()
+    
+    def get_current_cmap(self):
+        return COLORMAPS[self.active_cmap]
+
     def activate(self):
-        pass
+        self.grid(row=0, column=0)
 
     def deactivate(self):
-        pass
+        self.grid_forget()
 
 
 class InspectorWindow(tk.Frame):
@@ -353,32 +438,38 @@ class InspectorWindow(tk.Frame):
         self.profile = InspectorProfile(self)
         self.spatiotemp = InspectorSpatiotemporal(self)
 
-        self.profile.grid(row=0, column=0)
-        self.spatiotemp.grid(row=0, column=0)
+        #self.profile.grid(row=0, column=0)
+        #self.spatiotemp.grid(row=0, column=0)
 
+        self.activeFrame = None
         self.showProfile()
         self.grid(row=0, column=0)
 
     def showProfile(self):
         print('showing profile')
         self.showFrame(self.profile)
+        self.activeFrame = self.profile
 
     def showSpatiotemp(self):
         print('showing spatiotemp')
         self.showFrame(self.spatiotemp)
+        self.activeFrame = self.spatiotemp
 
     def showFrame(self, frame):
-        frame.tkraise()
-        # frame.activate()
+        if self.activeFrame:
+            self.activeFrame.deactivate()
+        #frame.tkraise()
+        frame.activate()
 
 class EntryWindow:
 
-    def __init__(self, root, mainpg, eq, k_sol):
+    def __init__(self, root, mainpg, eq, k_sol, record=False):
 
         self.root = root
         self.eq = eq
         self.k_sol = k_sol
         self.mainpg = mainpg
+        self.record = record
 
         self.txtlbl = ttk.Label(self.root, text='Insert name', font=MED_FONT)
         self.entry = ttk.Entry(self.root)
@@ -394,8 +485,13 @@ class EntryWindow:
 
     def save(self):
         name = self.entry.get()
-        if not self.eq.isState(name):
-            self.eq.saveState(self.k_sol, name)
+        cond = self.eq.isFolder(name) if self.record else self.eq.isState(name)
+        print(f'cond is {cond}')
+        if not cond:
+            if self.record:
+                self.mainpg.startRecord(name)
+            else:
+                self.eq.saveState(self.k_sol, name)
             self.die()
         else:
             self.statustext.set('Name already exists. Please insert another one')
@@ -521,7 +617,9 @@ class MainPage(tk.Frame):
         self.eqimg = tk.PhotoImage(file=ICONSFOLDER + 'equation.png')
         self.paramimg = tk.PhotoImage(file=ICONSFOLDER + 'params.png')
         self.saveimg = tk.PhotoImage(file=ICONSFOLDER + 'save.png')
-
+        self.recordimg = tk.PhotoImage(file=ICONSFOLDER + 'record1.png')
+        self.recordingimg = tk.PhotoImage(file=ICONSFOLDER + 'record2.png')
+        self.recordoffimg = tk.PhotoImage(file=ICONSFOLDER + 'record3.png')
 
         self.btn_e = ttk.Button(self.btn_container,
                                 command=self.edit, image=self.editimg)
@@ -539,17 +637,23 @@ class MainPage(tk.Frame):
                                     command=self.save, image=self.saveimg)
         self.btn_pause.grid(row=0, column=3)
 
+        self.btn_record = ttk.Button(self.btn_container,
+                                   command=self.record, image=self.recordimg)
+        self.btn_record.grid(row=0, column=4)
+
         self.btn_params = ttk.Button(self.btn_container, 
                                      command=self.open_params, image=self.paramimg)
-        self.btn_params.grid(row=0, column=4)
+        self.btn_params.grid(row=0, column=5)
 
         self.btn_eq = ttk.Button(self.btn_container,
                                  command=self.open_equation, image=self.eqimg)
-        self.btn_eq.grid(row=0, column=5)
+        self.btn_eq.grid(row=0, column=6)
 
         self.btn_insp = ttk.Button(self.btn_container,
                                    command=self.open_inspector, image=self.inspimg)
-        self.btn_insp.grid(row=0, column=6)
+        self.btn_insp.grid(row=0, column=7)
+
+        self.recording = False
 
         ## assuming eq and init cond are already defined
         eq = self.controller.eq
@@ -575,7 +679,7 @@ class MainPage(tk.Frame):
         self.draw_fields()
 
         ## Spatiotemporal diagram
-        spatiotemp = np.zeros((ST_ROWS, eq.Ni))
+        spatiotemp = np.zeros((ST_ROWS, eq.getN()))
         self.ax2 = self.fig.add_subplot(212, sharex=self.ax)
         self.imvals = spatiotemp
         x0 = eq.x[0]
@@ -583,7 +687,7 @@ class MainPage(tk.Frame):
         self.im = self.ax2.imshow(self.imvals, extent=[x0, xf, 0, ST_ROWS], aspect='auto')
         # self.ax2.set_xlabel('x')
         self.ax2.set_ylabel('t')
-        self.fig.colorbar(self.im, ax=self.ax2, orientation='horizontal')
+        self.colorbar = self.fig.colorbar(self.im, ax=self.ax2, orientation='horizontal')
 
         ## Draw canvas
 
@@ -624,6 +728,31 @@ class MainPage(tk.Frame):
 
         self.ani = animation.FuncAnimation(self.fig, self.animate, frames=60, interval=100, blit=False)
 
+    def record(self):
+        if self.recording:
+            self.btn_record.configure(image=self.recordimg)
+            self.controller.eq.stopRecording()
+            self.recording = False
+            print('Stop Recording...')
+        else:
+            self.pause()
+            self.create_entry_window(record=True)
+
+    def animate_record(self):
+        self.i_record += 1
+        if self.i_record >= 4:
+            img = self.recordoffimg if self.img_recording else self.recordingimg
+            self.btn_record.configure(image=img)
+            self.img_recording = not self.img_recording
+            self.i_record = 0
+
+    def startRecord(self, recordname):
+        self.controller.eq.startRecording(recordname)
+        self.recording = True
+        self.i_record = 0
+        self.img_recording = True
+        self.btn_record.configure(image=self.recordingimg)
+
     def edit(self):
         print(f'Edit clicked!, isEditing = {not self.isEditing}')
         if self.isEditing:
@@ -654,26 +783,26 @@ class MainPage(tk.Frame):
         try:
             if self.parentParamWindow.state() == 'normal':
                 self.parentParamWindow.focus_set()
-        except Exception as e:
+        except Exception:
             self.createParamWindow(self.controller.eq)
 
     def open_equation(self):
         try:
             if self.parentImageWindow.state() == 'normal':
                 self.parentImageWindow.focus_set()
-        except Exception as e:
+        except Exception:
             self.createImageWindow(self.controller.eq)
 
     def open_inspector(self):
         try:
             if self.parentInspectorWindow.state() == 'normal':
                 self.parentInspectorWindow.focus_set()
-        except Exception as e:
+        except Exception:
             self.createInspectorWindow(self.controller.eq)
 
-    def create_entry_window(self):
+    def create_entry_window(self, record=False):
         self.parentEntryWindow = tk.Toplevel(self)
-        self.entrywindow = EntryWindow(self.parentEntryWindow, self, self.controller.eq, self.k_sol)
+        self.entrywindow = EntryWindow(self.parentEntryWindow, self, self.controller.eq, self.k_sol, record=record)
 
     def kill_entry_window(self):
         self.parentEntryWindow.destroy()
@@ -746,6 +875,19 @@ class MainPage(tk.Frame):
                 self.lines[i].set_ydata(self.Fields[i])
                 self.lines[i].set_xdata(self.controller.eq.x)
 
+    def redraw_spatiotemp_field(self):
+        self.imvals = np.zeros((ST_ROWS, self.controller.eq.getN()))
+        self.k_spatiotemp = 0
+        self.imvals[self.k_spatiotemp, :] = self.Fields[self.inspector.spatiotemp.active_field_indx]
+
+    def replot_spatiotemp(self):
+        active_cmap = self.inspector.spatiotemp.get_current_cmap()
+        eq = self.controller.eq
+        self.ax2.clear()
+        self.im = self.ax2.imshow(self.imvals, cmap=active_cmap, extent=[eq.x[0], eq.x[-1], 0, ST_ROWS], aspect='auto')
+        self.colorbar.remove()
+        self.colorbar = self.fig.colorbar(self.im, ax=self.ax2, orientation='horizontal')
+
     def redraw_fields(self):
         self.ax.cla()
         self.draw_fields()
@@ -762,7 +904,7 @@ class MainPage(tk.Frame):
         eq.updateX()
 
         if i == -1:
-            i = self.last_i  # no estuy usando
+            # i = self.last_i  # no estuy usando
 
             if self.released:
                 print('Released!')
@@ -791,7 +933,6 @@ class MainPage(tk.Frame):
         new_params = eq.getCurrentParams()
 
 
-        k = (i - self.i_release) % ST_ROWS
         # k = i % ST_ROWS
         # print(f'i = {i}, i_r = {self.i_release}, i_s = {self.i_start_pause}, k = {k}, k_spatiotemp = {k_spatiotemp}.')
         # print(i, k)
@@ -800,39 +941,45 @@ class MainPage(tk.Frame):
         self.Fields = eq.getFields(self.k_sol)
         self.resetActiveField()
         self.inspector.profile.setTime(self.t)
-        if self.mustClear:
-            self.redraw_fields()
-            self.ax2.cla()
-            self.im = self.ax2.imshow(np.zeros((ST_ROWS, eq.N)), extent=[x0, xf, 0, ST_ROWS], aspect='auto')
-            self.mustClear = False
-        else:
-            self.update_fields()  # draw fields
-            self.imvals[self.k_spatiotemp, :] = self.Fields[0]  # for the moment
-            self.im.set_data(self.imvals)
+        self.update_fields()  # draw fields
 
-            self.k_spatiotemp = (self.k_spatiotemp + 1) % 60
+        self.imvals[self.k_spatiotemp, :] = self.Fields[self.inspector.spatiotemp.active_field_indx]
+        self.im.set_data(self.imvals)
 
-            xmin = np.min(self.Fields)
-            xmax = np.max(self.Fields)
+        self.k_spatiotemp = (self.k_spatiotemp + 1) % 60
 
-            vmin = np.min(self.imvals)
-            vmax = np.max(self.imvals)
+        xmin = np.min(self.Fields)
+        xmax = np.max(self.Fields)
 
+        vmin = np.min(self.imvals)
+        vmax = np.max(self.imvals)
+
+        if self.inspector.spatiotemp.auto_vlim:
             self.im.set_clim(vmin, vmax)
             self.im.set_extent([eq.x[0], eq.x[-1], 0, ST_ROWS])
-            
-            if self.inspector.profile.auto_ylim:
-                ymin = vmin - abs(vmin) / 10
-                ymax = vmax + abs(vmax) / 10
+            self.inspector.spatiotemp.set_vlim(vmin, vmax)
 
-                self.ax.set_ylim(min(ymin, xmin - abs(xmin) / 10), max(ymax, xmax + abs(xmax) / 10))
-                self.inspector.profile.set_ylim(min(ymin, xmin - abs(xmin) / 10), max(ymax, xmax + abs(xmax) / 10))
+        else:
+            _vmin, _vmax = self.inspector.spatiotemp.get_vlim()
+            if _vmin is not None:
+                self.im.set_clim(_vmin, _vmax)
+        
+        if self.inspector.profile.auto_ylim:
+            ymin = vmin - abs(vmin) / 10
+            ymax = vmax + abs(vmax) / 10
 
-                self.ax.set_xlim(eq.x[0], eq.x[-1])
-            else:
-                ymin, ymax = self.inspector.profile.get_ylim()
-                if ymin is not None:
-                    self.ax.set_ylim(ymin, ymax)
+            self.ax.set_ylim(min(ymin, xmin - abs(xmin) / 10), max(ymax, xmax + abs(xmax) / 10))
+            self.inspector.profile.set_ylim(min(ymin, xmin - abs(xmin) / 10), max(ymax, xmax + abs(xmax) / 10))
+
+            self.ax.set_xlim(eq.x[0], eq.x[-1])
+        else:
+            ymin, ymax = self.inspector.profile.get_ylim()
+            if ymin is not None:
+                self.ax.set_ylim(ymin, ymax)
+
+        if self.recording:
+            eq.saveRecord(self.k_sol)
+            self.animate_record()
 
         self.k_sol = (self.k_sol + 1) % ST_ROWS
         self.t += eq.getParam('dt')
@@ -855,7 +1002,7 @@ class MainPage(tk.Frame):
     def xstois(self, xs):
         i_s = np.zeros(len(xs), dtype='int64')
         for i in range(len(xs)):
-            i_s[i] = xtoi(xs[i])
+            i_s[i] = self.xtoi(xs[i])
 
     def updateY(self, xdata, ydata):
         xi = self.xtoi(xdata)
