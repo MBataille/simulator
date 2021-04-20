@@ -247,10 +247,17 @@ class Equation:
     def getSavedStatesNames(self):
         # get list of files in data/equation/
         folder = self.getDataFolder()
-        _, _, filenames = next(os.walk(folder))
-        foldernames = next(os.walk(folder))[1]
+        _, foldernames, filenames = next(os.walk(folder))
 
         return [fname.replace('.npz', '') for fname in filenames] + foldernames
+
+##### Operators
+
+    def BiLaplace1D(self, x): # only with priodic B.C.
+        dx = self.getParam('dx')
+        r = np.roll
+        bilaplace = (r(x, -2) - 4 * r(x, -1) + 6 * x - 4 * r(x, 1) + r(x, 2))/(dx**4)
+        return bilaplace
 
     def Laplace1D(self, x):
         dx = self.getParam('dx')

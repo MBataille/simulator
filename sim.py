@@ -2,6 +2,7 @@ import numpy as np
 
 import os
 import sys
+import platform
 
 import tkinter as tk
 from tkinter import ttk
@@ -24,7 +25,14 @@ class SimApp(tk.Tk):
 		tk.Tk.wm_title(self, 'Simulator')
 		self.geometry('512x768')
 		self.style = ttk.Style()
-		self.style.theme_use('clam') 
+		system = platform.system()
+		if system == 'Darwin': # mac
+			theme = 'aqua'
+		elif system == 'Linux':
+			theme = 'clam'
+		else:
+			theme = 'default'
+		self.style.theme_use(theme) 
 		container = tk.Frame(self)
 
 		container.pack(side='top', fill='both', expand=True)
