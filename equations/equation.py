@@ -35,13 +35,14 @@ def cantBeZero(name):
     return False
 
 class Equation:
-    def __init__(self, name, initParams, dim=1, N=200, isComplex=False, n_fields=1, fieldNames=['u']):
+    def __init__(self, name, initParams, dim=1, N=200, isComplex=False, n_fields=1, fieldNames=['u'], extraFieldNames=[]):
         self.name = name
         self.dim = dim
         self.initParams = initParams
         self.parameters = self.createParamsDict(initParams)
         self.isComplex = isComplex
         self.fieldNames = fieldNames
+        self.extraFieldNames = extraFieldNames
         self.t0 = 0
 
         self.boundary_condition = 'neumann'
@@ -143,9 +144,8 @@ class Equation:
     def saveState(self, k, filename):
         folder = self.getDataFolder()
         fields = self.getFields(k)
-        fields_dict = {field_name:fields[i] for i, field_name in enumerate(self.fieldNames)}
         _pnames, _pvals = self.paramsToArray()
-        np.savez_compressed(folder + filename + '.npz', paramnames=_pnames, paramvals=_pvals, x=self.getX(), **fields_dict)
+        np.savez_compressed(folder + filename + '.npz', paramnames=_pnames, paramvals=_pvals, x=self.getX(), fields=fields)
 
     def loadState(self, filename):
         folder = self.getDataFolder()
@@ -158,7 +158,7 @@ class Equation:
         self.parameters = self.createParamsDict(self.initParams)
 
         # load initial condition
-        fields = [data[field_name] for field_name in self.fieldNames]
+        fields = data['fields']
         self.setInitialCondition(self.assembleFields(fields))
 
     def arraytoInitParams(self, pnames, pvals):
@@ -249,3 +249,6 @@ class Equation:
 
     def setBoundaryCondition(self, bc):
         self.boundary_condition = bc
+
+    def updateExtraFields(self):
+        return None

@@ -174,13 +174,13 @@ class InspectorProfile(tk.Frame):
         self.parent = parent
 
         self.titlelbl = ttk.Label(self, text='Inspector: Profile', font=LARGE_FONT)
-        self.titlelbl.grid(column=0, row=0, columnspan=3, padx=20, pady=10)
+        self.titlelbl.grid(column=0, row=0, columnspan=3, padx=20, pady=10, sticky='w')
 
         self.y_minlbl = ttk.Label(self, text='y_min', font=MED_FONT)
         self.y_maxlbl = ttk.Label(self, text='y_max', font=MED_FONT)
 
-        self.y_minlbl.grid(column=0, row=2, columnspan=2)
-        self.y_maxlbl.grid(column=0, row=1, columnspan=2)
+        self.y_minlbl.grid(column=0, row=2)
+        self.y_maxlbl.grid(column=0, row=1)
 
         y_min, y_max = -1, 1
 
@@ -191,14 +191,32 @@ class InspectorProfile(tk.Frame):
         self.y_minval = ttk.Entry(self, textvariable=self.y_minvar, font=MED_FONT)
         self.y_maxval = ttk.Entry(self, textvariable=self.y_maxvar, font=MED_FONT)
 
-        self.y_minval.grid(column=3, row=2)
-        self.y_maxval.grid(column=3, row=1)
+        self.y_minval.grid(column=1, row=2)
+        self.y_maxval.grid(column=1, row=1)
 
-        self.auto_ylim = True
+        self.x_minlbl = ttk.Label(self, text='x_min', font=MED_FONT)
+        self.x_maxlbl = ttk.Label(self, text='x_max', font=MED_FONT)
+
+        self.x_minlbl.grid(column=2, row=2)
+        self.x_maxlbl.grid(column=2, row=1)
+
+        x_min, x_max = -1, 1
+
+        self.x_minvar = tk.StringVar(value=str(x_min))
+
+        self.x_maxvar = tk.StringVar(value=str(x_max))
+
+        self.x_minval = ttk.Entry(self, textvariable=self.x_minvar, font=MED_FONT)
+        self.x_maxval = ttk.Entry(self, textvariable=self.x_maxvar, font=MED_FONT)
+
+        self.x_minval.grid(column=3, row=2)
+        self.x_maxval.grid(column=3, row=1)
+
+        self.auto_lim = True
         self.autotxt = tk.StringVar()
         self.autotxt.set('Auto')
         self.autobtn = ttk.Button(self, textvariable=self.autotxt, command=self.set_auto)
-        self.autobtn.grid(column=0, row=3, columnspan=3)
+        self.autobtn.grid(column=0, row=3, columnspan=4)
 
         self.intmethodlbl = ttk.Label(self, text='Integration method: ', font=MED_FONT)
         self.intmethodlbl.grid(column=0, row=4, columnspan=2, padx=10, pady=10)
@@ -288,16 +306,28 @@ class InspectorProfile(tk.Frame):
         self.parent.controller.eq.setSolver(int_method)
 
     def set_auto(self):
-        if self.auto_ylim:
-            self.auto_ylim = False
+        if self.auto_lim:
+            self.auto_lim = False
             self.autotxt.set('Manual')
         else:
-            self.auto_ylim = True
+            self.auto_lim = True
             self.autotxt.set('Auto')
 
     def set_ylim(self, ymin, ymax):
         self.y_minvar.set(str(ymin))
         self.y_maxvar.set(str(ymax))
+
+    def set_xlim(self, xmin, xmax):
+        self.x_minvar.set(str(xmin))
+        self.x_maxvar.set(str(xmax))
+
+    def get_xlim(self):
+        try:
+            x_min = float(self.x_minvar.get())
+            x_max = float(self.x_maxvar.get())
+            return x_min, x_max
+        except ValueError:
+            return None, None
 
     def get_ylim(self):
         try:
@@ -308,16 +338,18 @@ class InspectorProfile(tk.Frame):
             return None, None
 
     def activate(self):
-        pass
+        self.grid(row=0, column=0)
 
     def deactivate(self):
-        pass
+        self.grid_forget()
 
     def setAx(self, ax):
         self.ax = ax
         ymin, ymax = self.ax.get_ylim()
-        self.y_minvar.set(ymin)
-        self.y_maxvar.set(ymax)
+        self.set_ylim(ymin, ymax)
+
+        xmin, xmax = self.ax.get_xlim()
+        self.set_xlim(xmin, xmax)
 
     def setTime(self, t):
         self.ellapsed_time_var.set(str(round(t, 4)))
@@ -334,10 +366,10 @@ class InspectorSpatiotemporal(tk.Frame):
         self.titlelbl.grid(column=0, row=0, columnspan=3, padx=20, pady=10)
 
     def activate(self):
-        pass
+        self.grid(row=0, column=0)
 
     def deactivate(self):
-        pass
+        self.grid_forget()
 
 
 class InspectorWindow(tk.Frame):
@@ -353,8 +385,10 @@ class InspectorWindow(tk.Frame):
         self.profile = InspectorProfile(self)
         self.spatiotemp = InspectorSpatiotemporal(self)
 
-        self.profile.grid(row=0, column=0)
-        self.spatiotemp.grid(row=0, column=0)
+
+        #self.profile.grid(row=0, column=0)
+        #self.spatiotemp.grid(row=0, column=0)
+        self.activeInspector = self.profile
 
         self.showProfile()
         self.grid(row=0, column=0)
@@ -368,7 +402,10 @@ class InspectorWindow(tk.Frame):
         self.showFrame(self.spatiotemp)
 
     def showFrame(self, frame):
-        frame.tkraise()
+        self.activeInspector.deactivate()
+        self.activeInspector = frame
+        self.activeInspector.activate()
+        #frame.tkraise()
         # frame.activate()
 
 class EntryWindow:
@@ -812,8 +849,8 @@ class MainPage(tk.Frame):
 
             self.k_spatiotemp = (self.k_spatiotemp + 1) % 60
 
-            xmin = np.min(self.Fields)
-            xmax = np.max(self.Fields)
+            fmin = np.min(self.Fields)
+            fmax = np.max(self.Fields)
 
             vmin = np.min(self.imvals)
             vmax = np.max(self.imvals)
@@ -821,18 +858,22 @@ class MainPage(tk.Frame):
             self.im.set_clim(vmin, vmax)
             self.im.set_extent([eq.x[0], eq.x[-1], 0, ST_ROWS])
             
-            if self.inspector.profile.auto_ylim:
+            if self.inspector.profile.auto_lim:
                 ymin = vmin - abs(vmin) / 10
                 ymax = vmax + abs(vmax) / 10
+                xmin, xmax = self.ax.get_xlim()
 
-                self.ax.set_ylim(min(ymin, xmin - abs(xmin) / 10), max(ymax, xmax + abs(xmax) / 10))
-                self.inspector.profile.set_ylim(min(ymin, xmin - abs(xmin) / 10), max(ymax, xmax + abs(xmax) / 10))
-
+                self.ax.set_ylim(min(ymin, fmin - abs(fmin) / 10), max(ymax, fmax + abs(fmax) / 10))
+                self.inspector.profile.set_ylim(min(ymin, fmin - abs(fmin) / 10), max(ymax, fmax + abs(fmax) / 10))
+                self.inspector.profile.set_xlim(xmin, xmax)
                 self.ax.set_xlim(eq.x[0], eq.x[-1])
             else:
                 ymin, ymax = self.inspector.profile.get_ylim()
+                xmin, xmax = self.inspector.profile.get_xlim()
                 if ymin is not None:
                     self.ax.set_ylim(ymin, ymax)
+                if xmin is not None:
+                    self.ax.set_xlim(xmin, xmax)
 
         self.k_sol = (self.k_sol + 1) % ST_ROWS
         self.t += eq.getParam('dt')

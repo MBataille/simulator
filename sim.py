@@ -106,6 +106,9 @@ class SimApp(tk.Tk):
 	def getListBoundaryConditions(self):
 		return self.eq.getAllBoundaryConditions()
 
+	def animate(self, i):
+		pass
+
 	def show_frame(self, cont):
 		# Raise frame to the top
 		frame = self.frames[cont]

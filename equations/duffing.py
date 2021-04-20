@@ -13,7 +13,7 @@ class Duffing(Equation):
 					'kappa' : 0.42, 
 					'delta': 0}
 
-		Equation.__init__(self, 'Duffing', initParams, dim=1, n_fields=2, N=200, fieldNames=['x', 'dx/dt'])
+		Equation.__init__(self, 'Duffing', initParams, dim=1, n_fields=2, N=200, fieldNames=['X', 'dX/dt'], extraFieldNames=['theta'])
 
 	def rhs(self, t, X, dXdt):
 		v = self.getCurrentParams()
@@ -32,6 +32,9 @@ class Duffing(Equation):
 						+ gamma * np.cos(omega * t) + (kappa + delta) * X_np + (kappa - delta) * X_nm
 
 		return (dXdt, d2Xdt2)
+
+	def updateExtraFields(t, X, dXdt):
+		return np.arctan2(dXdt, X)
 
 	def setInitialConditionIncoherent(self):
 		X = 0.3 * np.random.normal(size=self.Ni)
