@@ -181,8 +181,8 @@ class InspectorProfile(tk.Frame):
         self.y_minlbl = ttk.Label(self, text='y_min', font=MED_FONT)
         self.y_maxlbl = ttk.Label(self, text='y_max', font=MED_FONT)
 
-        self.y_minlbl.grid(column=0, row=2, columnspan=2)
-        self.y_maxlbl.grid(column=0, row=1, columnspan=2)
+        self.y_minlbl.grid(column=0, row=2)
+        self.y_maxlbl.grid(column=0, row=1)
 
         y_min, y_max = -1, 1
 
@@ -190,22 +190,40 @@ class InspectorProfile(tk.Frame):
 
         self.y_maxvar = tk.StringVar(value=str(y_max))
 
-        self.y_minval = ttk.Entry(self, textvariable=self.y_minvar, font=MED_FONT)
-        self.y_maxval = ttk.Entry(self, textvariable=self.y_maxvar, font=MED_FONT)
+        self.y_minval = ttk.Entry(self, textvariable=self.y_minvar, font=MED_FONT, width=15)
+        self.y_maxval = ttk.Entry(self, textvariable=self.y_maxvar, font=MED_FONT, width=15)
 
-        self.y_minval.grid(column=3, row=2)
-        self.y_maxval.grid(column=3, row=1)
+        self.y_minval.grid(column=1, row=2, padx=10)
+        self.y_maxval.grid(column=1, row=1, padx=10)
 
-        self.auto_ylim = True
+        self.x_minlbl = ttk.Label(self, text='x_min', font=MED_FONT)
+        self.x_maxlbl = ttk.Label(self, text='x_max', font=MED_FONT)
+
+        self.x_minlbl.grid(column=2, row=2)
+        self.x_maxlbl.grid(column=2, row=1)
+
+        x_min, x_max = -1, 1
+
+        self.x_minvar = tk.StringVar(value=str(x_min))
+
+        self.x_maxvar = tk.StringVar(value=str(x_max))
+
+        self.x_minval = ttk.Entry(self, textvariable=self.x_minvar, font=MED_FONT, width=15)
+        self.x_maxval = ttk.Entry(self, textvariable=self.x_maxvar, font=MED_FONT, width=15)
+
+        self.x_minval.grid(column=3, row=2, padx=10)
+        self.x_maxval.grid(column=3, row=1, padx=10)
+
+        self.auto_lim = True
         self.autotxt = tk.StringVar()
         self.autotxt.set('Auto')
         self.autobtn = ttk.Button(self, textvariable=self.autotxt, command=self.set_auto)
-        self.autobtn.grid(column=0, row=3, columnspan=3)
+        self.autobtn.grid(column=3, row=3, padx=10, pady=10)
 
         self.intmethodlbl = ttk.Label(self, text='Integration method: ', font=MED_FONT)
-        self.intmethodlbl.grid(column=0, row=4, columnspan=2, padx=10, pady=10)
+        self.intmethodlbl.grid(column=0, row=4, padx=10, pady=10, sticky='ew', columnspan=2)
 
-        self.combobox = ttk.Combobox(self, state='readonly')
+        self.combobox = ttk.Combobox(self, state='readonly', width=10)
         self.combobox['values'] = [int_method.code for int_method in INTEGRATION_METHODS]
         self.combobox.bind('<<ComboboxSelected>>', self.change_solver)
         self.combobox.current(0)
@@ -214,10 +232,10 @@ class InspectorProfile(tk.Frame):
         self.combobox.grid(column=3, row=4, padx=10, pady=10)
 
         self.descriptionlbl = ttk.Label(self, textvariable=self.description_text, font=MED_FONT)
-        self.descriptionlbl.grid(row=5, column=0, columnspan=3, padx=5, pady=5, sticky='e')
+        self.descriptionlbl.grid(row=5, column=1, columnspan=3, padx=5, pady=5, sticky='ew')
 
         self.bc_lbl = ttk.Label(self, text='Boundary Condition: ', font=MED_FONT)
-        self.bc_lbl.grid(row=6, column=0, columnspan=2)
+        self.bc_lbl.grid(row=6, column=0, padx=10, pady=10, sticky='ew', columnspan=2)
 
         self.bc_combobox = ttk.Combobox(self, state='readonly', width=10)
         self.bc_combobox['values'] = self.parent.mainpg.controller.getListBoundaryConditions()
@@ -227,14 +245,20 @@ class InspectorProfile(tk.Frame):
         self.bc_combobox.grid(row=6, column=3)
 
         self.ellapsed_time_desc_lbl = ttk.Label(self, text='Ellapsed time: ', font=MED_FONT)
-        self.ellapsed_time_desc_lbl.grid(row=7, column=0, padx=5, pady=5)
+        self.ellapsed_time_desc_lbl.grid(row=3, column=0, padx=10, pady=5)
+
+        self.time_container = tk.Frame(self)
+
+        self.resetimg = tk.PhotoImage(file=ICONSFOLDER + 'reset20.png')
 
         self.ellapsed_time_var = tk.StringVar(value='0')
-        self.ellapsed_time_val_lbl = ttk.Label(self, textvariable=self.ellapsed_time_var)
-        self.ellapsed_time_val_lbl.grid(row=7, column=1, padx=5, pady=5)
+        self.ellapsed_time_val_lbl = ttk.Label(self.time_container, textvariable=self.ellapsed_time_var)
+        self.ellapsed_time_val_lbl.grid(row=0, column=1, padx=5, pady=5)
 
-        self.elapsed_time_reset_btn = ttk.Button(self, text='Reset', command=self.reset_time)
-        self.elapsed_time_reset_btn.grid(row=7, column=2, padx=5, pady=5)
+        self.elapsed_time_reset_btn = ttk.Button(self.time_container, text='Reset', command=self.reset_time, image=self.resetimg)
+        self.elapsed_time_reset_btn.grid(row=0, column=2, padx=5, pady=5)
+
+        self.time_container.grid(row=3, column=1)
 
         self.choosefieldbl = ttk.Label(self, text='Show field: ', font=MED_FONT)
         self.choosefieldbl.grid(column=0, row=8, padx=10, pady=10)
@@ -289,22 +313,34 @@ class InspectorProfile(tk.Frame):
         self.parent.controller.eq.setSolver(int_method)
 
     def set_auto(self):
-        if self.auto_ylim:
-            self.auto_ylim = False
+        if self.auto_lim:
+            self.auto_lim = False
             self.autotxt.set('Manual')
         else:
-            self.auto_ylim = True
+            self.auto_lim = True
             self.autotxt.set('Auto')
 
     def set_ylim(self, ymin, ymax):
         self.y_minvar.set(str(ymin))
         self.y_maxvar.set(str(ymax))
 
+    def set_xlim(self, xmin, xmax):
+        self.x_minvar.set(str(xmin))
+        self.x_maxvar.set(str(xmax))
+
     def get_ylim(self):
         try:
             y_min = float(self.y_minvar.get())
             y_max = float(self.y_maxvar.get())
             return y_min, y_max
+        except ValueError:
+            return None, None
+
+    def get_xlim(self):
+        try:
+            x_min = float(self.x_minvar.get())
+            x_max = float(self.x_maxvar.get())
+            return x_min, x_max
         except ValueError:
             return None, None
 
@@ -317,7 +353,9 @@ class InspectorProfile(tk.Frame):
     def setAx(self, ax):
         self.ax = ax
         ymin, ymax = self.ax.get_ylim()
+        xmin, xmax = self.ax.get_xlim()
         self.set_ylim(ymin, ymax)
+        self.set_xlim(xmin, xmax)
 
     def setTime(self, t):
         self.ellapsed_time_var.set(str(round(t, 4)))
@@ -964,7 +1002,7 @@ class MainPage(tk.Frame):
             if _vmin is not None:
                 self.im.set_clim(_vmin, _vmax)
         
-        if self.inspector.profile.auto_ylim:
+        if self.inspector.profile.auto_lim:
             ymin = vmin - abs(vmin) / 10
             ymax = vmax + abs(vmax) / 10
 
@@ -972,10 +1010,14 @@ class MainPage(tk.Frame):
             self.inspector.profile.set_ylim(min(ymin, xmin - abs(xmin) / 10), max(ymax, xmax + abs(xmax) / 10))
 
             self.ax.set_xlim(eq.x[0], eq.x[-1])
+
         else:
             ymin, ymax = self.inspector.profile.get_ylim()
+            xmin, xmax = self.inspector.profile.get_xlim()
             if ymin is not None:
                 self.ax.set_ylim(ymin, ymax)
+            if xmin is not None:
+                self.ax.set_xlim(xmin, xmax)
 
         if self.recording:
             eq.saveRecord(self.k_sol)
