@@ -69,8 +69,7 @@ class EqKink(Equation):
 		initParams = { 'dt' : 0.1,
 							'dx': 0.5, 
 							'eps': 1, 
-							'alpha': 0,
-							'eta': 0 }
+							'alpha': 0}
 
 		Equation.__init__(self, 'Eqntest', initParams, dim=1)
 		
@@ -80,7 +79,7 @@ class EqKink(Equation):
 		dx = v['dx']; eps = v['eps']; alpha = v['alpha'] # and extract them like this
 
 		# calculate the derivative:
-		dudt = alpha + eps*u - u**3  + self.Laplace1D(u) + self.GaussianWhiteNoise()
+		dudt = alpha + eps*u - u**3  + self.Laplace1D(u)
 		return dudt
 
 	def setInitialConditionKink(self):

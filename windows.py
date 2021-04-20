@@ -149,7 +149,10 @@ class StartPage(tk.Frame):
                 self.n_ent.configure(state=tk.NORMAL)
 
     def cont(self):
-        index = self.initcond_listbox.curselection()[0]
+        try:
+            index = self.initcond_listbox.curselection()[0]
+        except IndexError:
+            self.statustext.set('Please enter an initial condition to continue.')
         print(f'selected {self.initcond_listbox.get(index)} initcond')
 
         try:
@@ -484,8 +487,8 @@ class InspectorSpatiotemporal(tk.Frame):
         except ValueError:
             return None, None
 
-    def set_lim(self, _min, _max, type):
-        var_min, var_max = self.get_minmax_type(type)
+    def set_lim(self, _min, _max, _type):
+        var_min, var_max = self.get_minmax_type(_type)
         var_min.set('{:.5f}'.format(_min))
         var_max.set('{:.5f}'.format(_max))
 
@@ -586,6 +589,7 @@ class EntryWindow:
 
         self.txtlbl = ttk.Label(self.root, text='Insert name', font=MED_FONT)
         self.entry = ttk.Entry(self.root)
+        self.entry.bind('<Return>', self.save)
         self.savebtn = ttk.Button(self.root, text='save', command=self.save)
 
         self.statustext = tk.StringVar()
@@ -596,7 +600,7 @@ class EntryWindow:
         self.savebtn.grid(row=1, column=1, padx=5, pady=5)
         self.status.grid(row=2, column=0, columnspan=2)
 
-    def save(self):
+    def save(self, *args):
         name = self.entry.get()
         cond = self.eq.isFolder(name) if self.record else self.eq.isState(name)
         print(f'cond is {cond}')
@@ -660,12 +664,12 @@ class MainPage(tk.Frame):
 
         tk.Frame.__init__(self, parent)
 
-        self.btn1img = tk.PhotoImage(file=ICONSFOLDER + 'back.png')
+        self.btn1img = tk.PhotoImage(file=ICONSFOLDER + 'home.png')
         btn1 = ttk.Button(self, text='Back home',
                           command=self.back_home, image=self.btn1img)
         btn1.grid(row=0, column=0)
 
-        label = ttk.Label(self, text='Interactive simulation', font=LARGE_FONT)
+        label = ttk.Label(self, text='Interactive PDE simulation', font=LARGE_FONT)
         label.grid(row=0, column=1)
 
         btn2 = ttk.Button(self, text='Reset',
@@ -792,9 +796,8 @@ class MainPage(tk.Frame):
         self.draw_fields()
 
         ## Spatiotemporal diagram
-        spatiotemp = np.zeros((ST_ROWS, eq.getN()))
         self.ax2 = self.fig.add_subplot(212, sharex=self.ax)
-        self.imvals = spatiotemp
+        self.imvals = np.zeros((ST_ROWS, eq.getN()))
         x0 = eq.x[0]
         xf = eq.x[-1]
         self.im = self.ax2.imshow(self.imvals, extent=[x0, xf, 0, ST_ROWS], aspect='auto')
@@ -822,12 +825,13 @@ class MainPage(tk.Frame):
         # self.container_mpl.geometry('512x740')
         self.container_mpl.grid(row=2, column=0, columnspan=3, sticky='ns')
 
+
         # self.rowconfigure(0, weight=1)
         self.rowconfigure(2, weight=1)
 
-        # self.columnconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
-        # self.columnconfigure(2, weight=1)
+        self.columnconfigure(2, weight=1)
 
         self.isEditing = False
         self.isPaused = False
@@ -1013,6 +1017,7 @@ class MainPage(tk.Frame):
         self.Fields[self.inspector.profile.active_field_indx] = self.active_Field
 
     def animate(self, i):
+        global ST_ROWS
         if not self.active: return
         eq = self.controller.eq
         eq.updateX()
@@ -1031,25 +1036,12 @@ class MainPage(tk.Frame):
         elif not self.isPaused:
             self.last_i = i  # tpco toy usando
 
-        # if self.released:
-        #     self.i_release = i
-        #     self.released = False
-
-        # if self.isEditing:
-        # self.Fields[self.inspector.profile.active_field_indx] = self.active_Field
-        #     self.update_fields()
-        #     #self.line.figure.canvas.draw()
-        # return self.lines
 
         if self.isPaused or self.isEditing:
             return self.lines + [self.im]
 
         new_params = eq.getCurrentParams()
 
-
-        # k = i % ST_ROWS
-        # print(f'i = {i}, i_r = {self.i_release}, i_s = {self.i_start_pause}, k = {k}, k_spatiotemp = {k_spatiotemp}.')
-        # print(i, k)
         if self.k_sol == 0 or new_params != self.last_params:
             self.solve_cycle()
         self.Fields = eq.getFields(self.k_sol)
@@ -1060,8 +1052,8 @@ class MainPage(tk.Frame):
         self.imvals[self.k_spatiotemp, :] = self.Fields[self.inspector.spatiotemp.active_field_indx]
         self.im.set_data(self.imvals)
 
-        self.k_spatiotemp = (self.k_spatiotemp + 1) % 60
-
+        self.k_spatiotemp = (self.k_spatiotemp + 1) % ST_ROWS
+        print(ST_ROWS)
         xmin = np.min(self.Fields)
         xmax = np.max(self.Fields)
 
@@ -1084,7 +1076,13 @@ class MainPage(tk.Frame):
                 _min, _max = self.inspector.spatiotemp.get_lim(_type)
                 if _min is not None:
                     if _type == 'x':   self.ax2.set_xlim(_min, _max)
-                    elif _type == 'y': self.ax2.set_ylim(_min, _max)
+                    elif _type == 'y':
+                        if _max > ST_ROWS:
+                            new_rows = int(_max) - ST_ROWS
+                            self.imvals = np.append(self.imvals, np.zeros((new_rows, eq.getN())), axis=0)
+                            ST_ROWS += new_rows
+                            self.replot_spatiotemp()
+                        self.ax2.set_ylim(_min, _max)
                     elif _type == 'v': self.im.set_clim(_min, _max)
         
         if self.inspector.profile.auto_lim:
@@ -1108,7 +1106,7 @@ class MainPage(tk.Frame):
             eq.saveRecord(self.k_sol)
             self.animate_record()
 
-        self.k_sol = (self.k_sol + 1) % ST_ROWS
+        self.k_sol = (self.k_sol + 1) % 60
         self.t += eq.getParam('dt')
         self.last_params = eq.getCurrentParams()
         return self.lines + [self.im]

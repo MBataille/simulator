@@ -39,7 +39,8 @@ class Equation:
         self.name = name
         self.dim = dim
         self.initParams = initParams
-        self.parameters = self.createParamsDict(initParams)
+        self.initParams['noise'] = 0 # add noise to params
+        self.parameters = self.createParamsDict(self.initParams)
         self.isComplex = isComplex
         self.fieldNames = fieldNames
         self.t0 = 0
@@ -108,16 +109,19 @@ class Equation:
                 self.sol = self.solver.solve(self.wrhs, (t[0], t[-1]), self.initCond.reshape(self.N * self.N), t)
         self.t0 = t[-1]
 
-    def rhs(self, t, u):
-        return u
-
     def wrhs(self, t, u):
         """Wrapper for RHS"""
         if self.n_fields == 1:
-            return self.rhs(t, u)
+            if self.getParam('noise') == 0:
+                return self.rhs(t, u)
+            else:
+                return self.rhs(t, u) + self.GaussianWhiteNoise()
         else:
             fields = self.extractFields(u)
             d_fields_dt = self.rhs(t, *fields)
+            if self.getParam('noise') != 0:
+                for dfield_dt in d_fields_dt:
+                    dfield_dt += self.GaussianWhiteNoise()
             return self.assembleFields(d_fields_dt)
         
 
@@ -253,8 +257,8 @@ class Equation:
 
 ##### Operators
 
-    def GaussianWhiteNoise(self): # assuming there is a parameter eta
-        eta = self.getParam('eta')
+    def GaussianWhiteNoise(self):
+        eta = self.getParam('noise')
         return np.sqrt(eta) * np.random.normal(size=self.getN())
 
     def BiLaplace1D(self, x): # only with priodic B.C.
