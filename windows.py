@@ -373,8 +373,8 @@ class InspectorSpatiotemporal(tk.Frame):
         self.v_minlbl = ttk.Label(self, text='v_min', font=MED_FONT)
         self.v_maxlbl = ttk.Label(self, text='v_max', font=MED_FONT)
 
-        self.v_minlbl.grid(column=0, row=2, columnspan=2)
-        self.v_maxlbl.grid(column=0, row=1, columnspan=2)
+        self.v_minlbl.grid(column=4, row=2)
+        self.v_maxlbl.grid(column=4, row=1)
 
         v_min, v_max = -1, 1
 
@@ -382,13 +382,51 @@ class InspectorSpatiotemporal(tk.Frame):
 
         self.v_maxvar = tk.StringVar(value=str(v_max))
 
-        self.v_minval = ttk.Entry(self, textvariable=self.v_minvar, font=MED_FONT)
-        self.v_maxval = ttk.Entry(self, textvariable=self.v_maxvar, font=MED_FONT)
+        self.v_minval = ttk.Entry(self, textvariable=self.v_minvar, width=15, font=MED_FONT)
+        self.v_maxval = ttk.Entry(self, textvariable=self.v_maxvar, width=15, font=MED_FONT)
 
-        self.v_minval.grid(column=3, row=2)
-        self.v_maxval.grid(column=3, row=1)
+        self.v_minval.grid(column=5, row=2)
+        self.v_maxval.grid(column=5, row=1)
 
-        self.auto_vlim = True
+        self.x_minlbl = ttk.Label(self, text='x_min', font=MED_FONT)
+        self.x_maxlbl = ttk.Label(self, text='x_max', font=MED_FONT)
+
+        self.x_minlbl.grid(column=0, row=2)
+        self.x_maxlbl.grid(column=0, row=1)
+
+        x_min, x_max = -1, 1
+
+        self.x_minvar = tk.StringVar(value=str(x_min))
+
+        self.x_maxvar = tk.StringVar(value=str(x_max))
+
+        self.x_minval = ttk.Entry(self, textvariable=self.x_minvar, width=15, font=MED_FONT)
+        self.x_maxval = ttk.Entry(self, textvariable=self.x_maxvar, width=15, font=MED_FONT)
+
+        self.x_minval.grid(column=1, row=2)
+        self.x_maxval.grid(column=1, row=1)
+
+        ####  ####
+
+        self.y_minlbl = ttk.Label(self, text='y_min', font=MED_FONT)
+        self.y_maxlbl = ttk.Label(self, text='y_max', font=MED_FONT)
+
+        self.y_minlbl.grid(column=2, row=2)
+        self.y_maxlbl.grid(column=2, row=1)
+
+        y_min, y_max = -1, 1
+
+        self.y_minvar = tk.StringVar(value=str(y_min))
+
+        self.y_maxvar = tk.StringVar(value=str(y_max))
+
+        self.y_minval = ttk.Entry(self, textvariable=self.y_minvar, width=15, font=MED_FONT)
+        self.y_maxval = ttk.Entry(self, textvariable=self.y_maxvar, width=15, font=MED_FONT)
+
+        self.y_minval.grid(column=3, row=2)
+        self.y_maxval.grid(column=3, row=1)
+
+        self.auto_lim = True
         self.autotxt = tk.StringVar()
         self.autotxt.set('Auto')
         self.autobtn = ttk.Button(self, textvariable=self.autotxt, command=self.set_auto)
@@ -402,27 +440,23 @@ class InspectorSpatiotemporal(tk.Frame):
         self.choosefieldcbox['values'] = self.parent.controller.eq.fieldNames
         self.choosefieldcbox.bind('<<ComboboxSelected>>', self.change_field)
         self.choosefieldcbox.current(0)
-        self.choosefieldcbox.grid(column=1, row=4)
+        self.choosefieldcbox.grid(column=1, row=4, padx=10, pady=10)
         self.active_field_indx = 0
 
         self.choosecolorlbl = ttk.Label(self, text='Colormap: ', font=MED_FONT)
-        self.choosecolorlbl.grid(column=0, row=5)
+        self.choosecolorlbl.grid(column=0, row=5, padx=10, pady=10)
 
         self.active_cmap = 0
         self.choosecolorbox = ttk.Combobox(self, state='readonly', width=10)
         self.choosecolorbox['values'] = COLORMAPS
         self.choosecolorbox.bind('<<ComboboxSelected>>', self.change_cmap)
         self.choosecolorbox.current(0)
-        self.choosecolorbox.grid(column=1, row=5)
+        self.choosecolorbox.grid(column=1, row=5, padx=10, pady=10)
 
     def setIm(self, im):
         self.im = im
         vmin, vmax = self.im.get_clim()
         self.set_vlim(vmin, vmax)
-
-    def set_vlim(self, vmin, vmax):
-        self.v_minvar.set('{:.5f}'.format(vmin))
-        self.v_maxvar.set('{:.5f}'.format(vmax))
 
     def get_vlim(self):
         try:
@@ -430,14 +464,55 @@ class InspectorSpatiotemporal(tk.Frame):
             v_max = float(self.v_maxvar.get())
             return v_min, v_max
         except ValueError:
-            return None, None      
+            return None, None
+
+    def get_minmax_type(self, type):
+        if type == 'x':
+            var_min, var_max = self.x_minvar, self.x_maxvar
+        elif type == 'y':
+            var_min, var_max = self.y_minvar, self.y_maxvar
+        elif type == 'v':
+            var_min, var_max = self.v_minvar, self.v_maxvar
+        return var_min, var_max
+
+    def get_lim(self, type):
+        minvar, maxvar = self.get_minmax_type(type)
+        try:
+            _min = float(minvar.get())
+            _max = float(maxvar.get())
+            return _min, _max
+        except ValueError:
+            return None, None
+
+    def set_lim(self, _min, _max, type):
+        var_min, var_max = self.get_minmax_type(type)
+        var_min.set('{:.5f}'.format(_min))
+        var_max.set('{:.5f}'.format(_max))
+
+    def set_xlim(self, xmin, xmax):
+        self.set_lim(xmin, xmax, 'x')
+    
+    def set_ylim(self, ymin, ymax):
+        self.set_lim(ymin, ymax, 'y')
+
+    def set_vlim(self, vmin, vmax):
+        self.set_lim(vmin, vmax, 'v')
+
+    def get_xlim(self):
+        return self.get_lim('x')
+
+    def get_ylim(self):
+        return self.get_lim('y')
+
+    def get_vlim(self):
+        return self.get_lim('v')
 
     def set_auto(self):
-        if self.auto_vlim:
-            self.auto_vlim = False
+        if self.auto_lim:
+            self.auto_lim = False
             self.autotxt.set('Manual')
         else:
-            self.auto_vlim = True
+            self.auto_lim = True
             self.autotxt.set('Auto')
 
     def change_field(self, event):
@@ -922,6 +997,7 @@ class MainPage(tk.Frame):
         active_cmap = self.inspector.spatiotemp.get_current_cmap()
         eq = self.controller.eq
         self.ax2.clear()
+        print('replotting')
         self.im = self.ax2.imshow(self.imvals, cmap=active_cmap, extent=[eq.x[0], eq.x[-1], 0, ST_ROWS], aspect='auto')
         self.colorbar.remove()
         self.colorbar = self.fig.colorbar(self.im, ax=self.ax2, orientation='horizontal')
@@ -992,15 +1068,24 @@ class MainPage(tk.Frame):
         vmin = np.min(self.imvals)
         vmax = np.max(self.imvals)
 
-        if self.inspector.spatiotemp.auto_vlim:
+        if self.inspector.spatiotemp.auto_lim:
             self.im.set_clim(vmin, vmax)
             self.im.set_extent([eq.x[0], eq.x[-1], 0, ST_ROWS])
             self.inspector.spatiotemp.set_vlim(vmin, vmax)
 
+            _xmin, _xmax = self.ax2.get_xlim()
+            _ymin, _ymax = self.ax2.get_ylim()
+
+            self.inspector.spatiotemp.set_xlim(_xmin, _xmax)
+            self.inspector.spatiotemp.set_ylim(_ymin, _ymax)
+
         else:
-            _vmin, _vmax = self.inspector.spatiotemp.get_vlim()
-            if _vmin is not None:
-                self.im.set_clim(_vmin, _vmax)
+            for _type in ('x', 'y', 'v'):
+                _min, _max = self.inspector.spatiotemp.get_lim(_type)
+                if _min is not None:
+                    if _type == 'x':   self.ax2.set_xlim(_min, _max)
+                    elif _type == 'y': self.ax2.set_ylim(_min, _max)
+                    elif _type == 'v': self.im.set_clim(_min, _max)
         
         if self.inspector.profile.auto_lim:
             ymin = vmin - abs(vmin) / 10
