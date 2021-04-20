@@ -11,7 +11,8 @@ class Duffing(Equation):
 					'gamma' : 2.75,
 					'omega' : 0.7,
 					'kappa' : 0.42, 
-					'delta': 0}
+					'delta': 0,
+					'eta': 0}
 
 		Equation.__init__(self, 'Duffing', initParams, dim=1, n_fields=2, N=200, fieldNames=['x', 'dx/dt'])
 
@@ -29,7 +30,7 @@ class Duffing(Equation):
 			X_np[-1] = X[-2]
 
 		d2Xdt2 = X * (-1 - 2*kappa) + alpha * X ** 3 - X ** 5 - mu * dXdt \
-						+ gamma * np.cos(omega * t) + (kappa + delta) * X_np + (kappa - delta) * X_nm
+						+ gamma * np.cos(omega * t) + (kappa + delta) * X_np + (kappa - delta) * X_nm + self.GaussianWhiteNoise()
 
 		return (dXdt, d2Xdt2)
 

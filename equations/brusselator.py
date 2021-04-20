@@ -21,7 +21,8 @@ class Brusselator(Equation):
 		initParams = { 'dt' : 0.1,
 					'dx': 0.5, 
 					'A': 1, 
-					'B': 3}
+					'B': 3,
+					'eta': 0}
 
 		Equation.__init__(self, 'Brusselator', initParams, dim=1, n_fields=2, N=200, fieldNames=['X', 'Y'])
 
@@ -29,8 +30,8 @@ class Brusselator(Equation):
 		v = self.getCurrentParams()
 		dx = v['dx']; A = v['A']; B = v['B']
 
-		dXdt = A + X*(X*Y - B - 1) + self.Laplace1D(X)
-		dYdt = X*(B -X*Y) + self.Laplace1D(Y)
+		dXdt = A + X*(X*Y - B - 1) + self.Laplace1D(X) + self.GaussianWhiteNoise()
+		dYdt = X*(B -X*Y) + self.Laplace1D(Y) + self.GaussianWhiteNoise()
 
 		return dXdt, dYdt
 

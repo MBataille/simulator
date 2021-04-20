@@ -8,7 +8,8 @@ class TuringSwiftHohenberg(Equation):
             'dt' : 0.1,
             'dx' : 0.5,
             'eps': -0.22,
-            'nu': 1
+            'nu': 1,
+            'eta': 0,
         }
         Equation.__init__(self, 'Turing-Swift-Hohenberg', initParams, fieldNames=['u'])
 
@@ -24,7 +25,7 @@ class TuringSwiftHohenberg(Equation):
         bilaplace = (r(u, 2) + r(u, -2) - 4 * u_nn + 6 * u) / (dx**4)
 
         #return eps*u - u**3 - nu*self.Laplace1D(u) - self.BiLaplace1D(u)
-        return eps*u - u ** 3 - nu * laplace - bilaplace
+        return eps*u - u ** 3 - nu * laplace - bilaplace + self.GaussianWhiteNoise()
 
     def getAllBoundaryConditions(self):
         return ['periodic']

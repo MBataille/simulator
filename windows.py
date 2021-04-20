@@ -321,12 +321,12 @@ class InspectorProfile(tk.Frame):
             self.autotxt.set('Auto')
 
     def set_ylim(self, ymin, ymax):
-        self.y_minvar.set(str(ymin))
-        self.y_maxvar.set(str(ymax))
+        self.y_minvar.set('{:.5f}'.format(ymin))
+        self.y_maxvar.set('{:.5f}'.format(ymax))
 
     def set_xlim(self, xmin, xmax):
-        self.x_minvar.set(str(xmin))
-        self.x_maxvar.set(str(xmax))
+        self.x_minvar.set('{:.5f}'.format(xmin))
+        self.x_maxvar.set('{:.5f}'.format(xmax))
 
     def get_ylim(self):
         try:
@@ -421,8 +421,8 @@ class InspectorSpatiotemporal(tk.Frame):
         self.set_vlim(vmin, vmax)
 
     def set_vlim(self, vmin, vmax):
-        self.v_minvar.set(str(vmin))
-        self.v_maxvar.set(str(vmax))
+        self.v_minvar.set('{:.5f}'.format(vmin))
+        self.v_maxvar.set('{:.5f}'.format(vmax))
 
     def get_vlim(self):
         try:

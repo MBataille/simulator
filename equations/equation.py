@@ -253,6 +253,10 @@ class Equation:
 
 ##### Operators
 
+    def GaussianWhiteNoise(self): # assuming there is a parameter eta
+        eta = self.getParam('eta')
+        return np.sqrt(eta) * np.random.normal(size=self.getN())
+
     def BiLaplace1D(self, x): # only with priodic B.C.
         dx = self.getParam('dx')
         r = np.roll
