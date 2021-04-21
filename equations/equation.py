@@ -111,6 +111,7 @@ class Equation:
 
     def wrhs(self, t, u):
         """Wrapper for RHS"""
+        #print(self.getCurrentParams())
         if self.n_fields == 1:
             if self.getParam('noise') == 0:
                 return self.rhs(t, u)
@@ -190,6 +191,7 @@ class Equation:
         self.Ni = int(data['pvals'][0])
         self.N = int(self.Ni * self.n_fields)
         self.initParams = self.arraytoInitParams(data['pnames'][1:], data['pvals'][1:])
+        self.initParams['noise'] = 0
         self.parameters = self.createParamsDict(self.initParams)
 
     def arraytoInitParams(self, pnames, pvals):
