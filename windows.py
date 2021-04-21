@@ -796,11 +796,11 @@ class MainPage(tk.Frame):
         self.draw_fields()
 
         ## Spatiotemporal diagram
-        self.ax2 = self.fig.add_subplot(212, sharex=self.ax)
+        self.ax2 = self.fig.add_subplot(212)
         self.imvals = np.zeros((ST_ROWS, eq.getN()))
         x0 = eq.x[0]
         xf = eq.x[-1]
-        self.im = self.ax2.imshow(self.imvals, extent=[x0, xf, 0, ST_ROWS], aspect='auto')
+        self.im = self.ax2.imshow(self.imvals, extent=[x0, xf, 0, ST_ROWS], aspect='auto', origin='lower')
         # self.ax2.set_xlabel('x')
         self.ax2.set_ylabel('t')
         self.colorbar = self.fig.colorbar(self.im, ax=self.ax2, orientation='horizontal')
@@ -1002,9 +1002,10 @@ class MainPage(tk.Frame):
         eq = self.controller.eq
         self.ax2.clear()
         print('replotting')
-        self.im = self.ax2.imshow(self.imvals, cmap=active_cmap, extent=[eq.x[0], eq.x[-1], 0, ST_ROWS], aspect='auto')
+        self.im = self.ax2.imshow(self.imvals, cmap=active_cmap, extent=[eq.x[0], eq.x[-1], 0, ST_ROWS], aspect='auto', origin='lower')
         self.colorbar.remove()
         self.colorbar = self.fig.colorbar(self.im, ax=self.ax2, orientation='horizontal')
+        self.ax2.set_ylabel('t')
 
     def redraw_fields(self):
         self.ax.cla()
@@ -1051,9 +1052,7 @@ class MainPage(tk.Frame):
 
         self.imvals[self.k_spatiotemp, :] = self.Fields[self.inspector.spatiotemp.active_field_indx]
         self.im.set_data(self.imvals)
-
-        self.k_spatiotemp = (self.k_spatiotemp + 1) % ST_ROWS
-        print(ST_ROWS)
+        
         xmin = np.min(self.Fields)
         xmax = np.max(self.Fields)
 
@@ -1082,6 +1081,10 @@ class MainPage(tk.Frame):
                             self.imvals = np.append(self.imvals, np.zeros((new_rows, eq.getN())), axis=0)
                             ST_ROWS += new_rows
                             self.replot_spatiotemp()
+                        elif int(_max) != ST_ROWS and int(_max) != 0:
+                            ST_ROWS = int(_max)
+                            self.imvals = self.imvals[:ST_ROWS, :]
+                            self.replot_spatiotemp()
                         self.ax2.set_ylim(_min, _max)
                     elif _type == 'v': self.im.set_clim(_min, _max)
         
@@ -1105,7 +1108,7 @@ class MainPage(tk.Frame):
         if self.recording:
             eq.saveRecord(self.k_sol)
             self.animate_record()
-
+        self.k_spatiotemp = (self.k_spatiotemp + 1) % ST_ROWS
         self.k_sol = (self.k_sol + 1) % 60
         self.t += eq.getParam('dt')
         self.last_params = eq.getCurrentParams()
