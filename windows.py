@@ -449,7 +449,7 @@ class InspectorSpatiotemporal(tk.Frame):
         self.choosecolorlbl = ttk.Label(self, text='Colormap: ', font=MED_FONT)
         self.choosecolorlbl.grid(column=0, row=5, padx=10, pady=10)
 
-        self.active_cmap = 0
+        self.active_cmap = [0] * self.parent.controller.eq.n_fields
         self.choosecolorbox = ttk.Combobox(self, state='readonly', width=10)
         self.choosecolorbox['values'] = COLORMAPS
         self.choosecolorbox.bind('<<ComboboxSelected>>', self.change_cmap)
@@ -522,17 +522,18 @@ class InspectorSpatiotemporal(tk.Frame):
         new_active_field_indx = self.choosefieldcbox.current()
         if new_active_field_indx != self.active_field_indx:
             self.active_field_indx = new_active_field_indx
-            self.parent.mainpg.redraw_spatiotemp_field()
+            self.choosecolorbox.current(self.active_cmap[self.active_field_indx])
+            self.parent.mainpg.replot_spatiotemp()
 
 
     def change_cmap(self, event):
         new_active_cmap = self.choosecolorbox.current()
-        if new_active_cmap != self.active_cmap:
-            self.active_cmap = new_active_cmap
+        if new_active_cmap != self.active_cmap[self.active_field_indx]:
+            self.active_cmap[self.active_field_indx] = new_active_cmap
             self.parent.mainpg.replot_spatiotemp()
     
     def get_current_cmap(self):
-        return COLORMAPS[self.active_cmap]
+        return COLORMAPS[self.active_cmap[self.active_field_indx]]
 
     def activate(self):
         self.grid(row=0, column=0)
