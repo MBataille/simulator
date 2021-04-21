@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import animation
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 from threadpoolctl import threadpool_limits
 from tkinter import StringVar

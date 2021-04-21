@@ -595,6 +595,8 @@ class EntryWindow:
         self.statustext = tk.StringVar()
         self.status = ttk.Label(self.root, textvariable=self.statustext, font=MED_FONT)
 
+        self.warned = False
+
         self.txtlbl.grid(row=0, column=0, columnspan=2)
         self.entry.grid(row=1, column=0, padx=5, pady=5)
         self.savebtn.grid(row=1, column=1, padx=5, pady=5)
@@ -604,14 +606,16 @@ class EntryWindow:
         name = self.entry.get()
         cond = self.eq.isFolder(name) if self.record else self.eq.isState(name)
         print(f'cond is {cond}')
-        if not cond:
+        if (not cond) or self.warned:
             if self.record:
                 self.mainpg.startRecord(name)
             else:
                 self.eq.saveState(self.k_sol, name)
             self.die()
         else:
-            self.statustext.set('Name already exists. Please insert another one')
+            self.statustext.set('Name already exists. Are you sure you want to overwrite it?')
+            self.warned = True
+
 
     def die(self):
         self.mainpg.play()
