@@ -197,7 +197,8 @@ class Equation:
     def arraytoInitParams(self, pnames, pvals):
         initParams = {}
         for i in range(len(pnames)):
-            initParams[pnames[i]] = pvals[i]
+            if pnames[i] in self.initParams:
+                initParams[pnames[i]] = pvals[i]
         return initParams
 
     def paramsToArray(self):
