@@ -789,7 +789,7 @@ class MainPage(tk.Frame):
 
         ### initialize plot and draw
 
-        self.fig = Figure(figsize=(5, 5), dpi=100)
+        self.fig = Figure(figsize=(10, 10), dpi=100)
         self.ax = self.fig.add_subplot(211)
         self.ax.set_xlabel('x')
         self.ax.set_ylabel('u')

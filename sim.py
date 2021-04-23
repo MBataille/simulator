@@ -3,9 +3,16 @@ import numpy as np
 import os
 import sys
 import platform
+import importlib
 
 import tkinter as tk
 from tkinter import ttk
+# change this later
+if importlib.util.find_spec('ttkthemes') is not None:
+	ttk_themes = True
+	from ttkthemes import ThemedStyle
+else:
+	ttk_themes = False
 
 from windows import StartPage, MainPage
 
@@ -24,15 +31,19 @@ class SimApp(tk.Tk):
 		# t.Tk.iconbitmap(self, default='clienticon.ico')
 		tk.Tk.wm_title(self, 'Simulator v0.1')
 		self.geometry('512x768')
-		self.style = ttk.Style()
-		system = platform.system()
-		if system == 'Darwin': # mac
-			theme = 'aqua'
-		elif system == 'Linux':
-			theme = 'clam'
+		if ttk_themes:
+			self.style = ThemedStyle(self)
+			self.style.set_theme('breeze')
 		else:
-			theme = 'default'
-		self.style.theme_use(theme) 
+			self.style = ttk.Style()
+			system = platform.system()
+			if system == 'Darwin': # mac
+				theme = 'aqua'
+			elif system == 'Linux':
+				theme = 'clam'
+			else:
+				theme = 'default'
+			self.style.theme_use(theme) 
 		container = tk.Frame(self)
 
 		container.pack(side='top', fill='both', expand=True)
