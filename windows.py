@@ -461,14 +461,6 @@ class InspectorSpatiotemporal(tk.Frame):
         vmin, vmax = self.im.get_clim()
         self.set_vlim(vmin, vmax)
 
-    def get_vlim(self):
-        try:
-            v_min = float(self.v_minvar.get())
-            v_max = float(self.v_maxvar.get())
-            return v_min, v_max
-        except ValueError:
-            return None, None
-
     def get_minmax_type(self, type):
         if type == 'x':
             var_min, var_max = self.x_minvar, self.x_maxvar
