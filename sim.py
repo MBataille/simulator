@@ -107,6 +107,7 @@ class SimApp(tk.Tk):
 
 	def resetEqInitCond(self):
 		self.setEqInitCond(self.current_initcond_indx)
+		self.solve_cycle()
 
 	def setEq(self, name):
 		### eq should be a string or sth
@@ -130,6 +131,9 @@ class SimApp(tk.Tk):
 		frame = self.frames[cont]
 		frame.tkraise()
 		frame.activate()
+	
+	def solve_cycle(self):
+		self.eq.solve_cycle()
 
 
 def main():

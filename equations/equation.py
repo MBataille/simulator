@@ -12,6 +12,7 @@ DATAFOLDER = 'data/'
 ALL_BOUNDARY_CONDITIONS = 'neumann periodic'.split(' ')
 RECORD_FILENAME = 'state'
 T0_UPPER_BOUND = 1e6
+SOLVE_EVERY_TI = 60 # solve every 60 time steps
 
 class Parameter:
     def __init__(self, name, var):
@@ -43,7 +44,10 @@ class Equation:
         self.parameters = self.createParamsDict(self.initParams)
         self.isComplex = isComplex
         self.fieldNames = fieldNames
-        self.t0 = 0
+  
+        # init tick // Perhaps this should go outside?
+        self.recording = False
+        self.init_tick()
 
         self.boundary_condition = 'neumann'
 
@@ -54,6 +58,38 @@ class Equation:
 
         # each field will have N points
         self.setNi(N)
+
+    def init_tick(self):
+        self.k_sol = 0
+        self.t0 = 0
+        self.last_params = self.getCurrentParams()
+
+    def tick(self, newInitCondFields=None): #  make 1 time step
+        new_params = self.getCurrentParams()
+        if self.k_sol % SOLVE_EVERY_TI == 0 or new_params != self.last_params or newInitCondFields is not None:
+            # just in case
+            self.updateX()
+            if newInitCondFields is not None:
+                self.setInitCondFields(newInitCondFields)
+            self.solve_cycle()
+        
+        self.k_sol += 1
+        
+        if self.recording:
+            self.saveRecord()
+        
+        self.last_params = new_params
+
+        # may not be necessary
+        # return self.getFields(self.k_sol)
+
+    def getCurrentFields(self): # return Fields at k = k_sol
+        return self.getFields(self.k_sol)
+
+    def solve_cycle(self):
+        self.solve()
+        self.initCond = self.sol[:, -1]
+        self.k_sol = 0
 
     def setNi(self, Ni):
         self.Ni = Ni
@@ -158,19 +194,21 @@ class Equation:
         if not self.isFolder(foldername):
             os.mkdir(path)
         self.k_recording = 0
+        self.recording  = True
         self.foldername_recording = foldername + '/'
 
     def getRecordStateName(self, k):
         return RECORD_FILENAME + f'_{k}' 
 
-    def saveRecord(self, k_sol):
+    def saveRecord(self):
         self.k_recording += 1
         filename = self.foldername_recording + self.getRecordStateName(self.k_recording)
-        self.saveState(k_sol, filename)
+        self.saveState(self.k_sol, filename)
 
     def stopRecording(self):
         self.k_recording = None
         self.path_recording = None
+        self.recording = False
 
     def saveState(self, k, filename):
         folder = self.getDataFolder()
@@ -235,6 +273,8 @@ class Equation:
         return [self.initCond[i * Ni : (i + 1) * Ni] for i in range(self.n_fields)]
 
     def setInitCondFields(self, fields):
+        """ Sets intial condition from a list of fields = [np.array]
+        """
         self.initCond = self.assembleFields(fields)
 
 
@@ -252,11 +292,34 @@ class Equation:
         return DATAFOLDER + self.name + '/'
 
     def getSavedStatesNames(self):
-        # get list of files in data/equation/
+        """ Returns list of saved (files) and recorded (folders) states in data/equation_name/
+        """
         folder = self.getDataFolder()
         _, foldernames, filenames = next(os.walk(folder))
 
         return [fname.replace('.npz', '') for fname in filenames] + foldernames
+
+    def get_xlims(self):
+        """ Returns min and max of the x axis.
+        """
+        return self.x[0], self.x[-1]
+
+    def get_field_lims(self, field_indx):
+        """ Returns min and max of selected field at k = k_sol (current state)
+        """
+        field = self.getField(field_indx, self.k_sol)
+        return field.min(), field.max()
+    
+    def get_fields_lims(self, indices=None):
+        if indices is None: indices = range(self.n_fields)
+        fields = self.getFields(self.k_sol)
+        fmin, fmax = np.inf, -np.inf
+        for i in indices:
+            fm, fM = fields[i].min(), fields[i].max()
+            if fm < fmin: fmin = fm
+            if fM > fmax: fmax = fM
+        return fmin, fmax
+
 
 ##### Operators
 
@@ -271,6 +334,9 @@ class Equation:
         return bilaplace
 
     def Laplace1D(self, x):
+        """ Laplacian operator in 1D. Supports periodic and neumann BCs
+            Params: x (np array)s
+        """
         dx = self.getParam('dx')
         laplace = (np.roll(x, 1) + np.roll(x, -1) - 2*x)/(dx*dx)
         if self.boundary_condition == 'neumann':

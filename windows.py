@@ -38,7 +38,13 @@ style.use('ggplot')
 ST_ROWS = 60
 RAW_N = 30
 
+def i10p(val):
+    """ Increase val in 10%  """
+    return val + 0.1 * abs(val)
 
+def d10p(val):
+    """ Decrease val in 10% """
+    return val - 0.1 * abs(val)
 class ImageWindow(tk.Frame):
     def __init__(self, master, filename):
         tk.Frame.__init__(self, master)
@@ -217,7 +223,6 @@ class InspectorProfile(tk.Frame):
         self.x_minval.grid(column=3, row=2, padx=10)
         self.x_maxval.grid(column=3, row=1, padx=10)
 
-        self.auto_lim = True
         self.autotxt = tk.StringVar()
         self.autotxt.set('Auto')
         self.autobtn = ttk.Button(self, textvariable=self.autotxt, command=self.set_auto)
@@ -271,39 +276,45 @@ class InspectorProfile(tk.Frame):
         self.choosefieldcbox.bind('<<ComboboxSelected>>', self.change_field)
         self.choosefieldcbox.current(0)
         self.choosefieldcbox.grid(column=1, row=8)
-        self.active_field_indx = 0
 
         self.choosecolorlbl = ttk.Label(self, text='Color: ', font=MED_FONT)
         self.choosecolorlbl.grid(column=2, row=8)
 
-        self.current_colors = [_i + 1 for _i in range(self.parent.controller.eq.n_fields)]
-
         self.choosecolorbox = ttk.Combobox(self, state='readonly', width=10)
         self.choosecolorbox['values'] = COLORS
         self.choosecolorbox.bind('<<ComboboxSelected>>', self.change_color)
-        self.choosecolorbox.current(self.current_colors[0])
+        self.choosecolorbox.current(1)
         self.choosecolorbox.grid(column=3, row=8)
 
-    def change_bc(self, event):
-        indx = self.bc_combobox.current()
-        self.parent.mainpg.controller.setBoundaryCondition(indx)
-        self.parent.mainpg.solve_cycle()
+    def initProfilePlot(self, pplot):
+        self.pplot = pplot
+        self.setAx(pplot.ax)
 
-    def reset_time(self):
+    def changeProfilePlot(self, pplot):
+        self.pplot = pplot
+
+        self.choosefieldcbox.current(self.pplot.active_field_indx)
+        self.choosecolorbox.current(self.pplot.getCurrentColorActiveField())
+
+    def change_bc(self, event):
+        indx = self.bc_combobox.current() # store controller directly?
+        self.parent.mainpg.controller.setBoundaryCondition(indx)
+        self.parent.mainpg.controller.solve_cycle()
+
+    def reset_time(self): # interact w P plot
         self.parent.mainpg.t = 0
 
     def change_field(self, event):
-        mainpg = self.parent.mainpg
-        mainpg.activeFieldToCurrent()
-        self.active_field_indx = self.choosefieldcbox.current()
-        mainpg.resetActiveField()
-        self.choosecolorbox.current(self.current_colors[self.active_field_indx])
+        self.pplot.activeFieldToCurrent()
+        self.pplot.active_field_indx = self.choosefieldcbox.current()
+        self.pplot.resetActiveField()
+        self.choosecolorbox.current(self.pplot.getCurrentColorActiveField())
 
-    def change_color(self, event):
+    def change_color(self, event): # interact w P Plot
         new_color = self.choosecolorbox.current()
-        if self.current_colors[self.active_field_indx] != new_color:
-            self.current_colors[self.active_field_indx] = new_color
-            self.parent.mainpg.redraw_fields()
+        curcolor = self.pplot.getCurrentColorActiveField()
+        if curcolor != new_color:
+            self.pplot.setCurrentColorActiveField(new_color)
 
     def change_solver(self, event):
         solver_index = self.combobox.current()
@@ -313,14 +324,15 @@ class InspectorProfile(tk.Frame):
         self.description_text.set(int_method.description)
 
         # change solver
-        self.parent.controller.eq.setSolver(int_method)
+        self.parent.controller.eq.setSolver(int_method) # call controller
+
 
     def set_auto(self):
-        if self.auto_lim:
-            self.auto_lim = False
+        if self.pplot.auto_lim:
+            self.pplot.auto_lim = False
             self.autotxt.set('Manual')
         else:
-            self.auto_lim = True
+            self.pplot.auto_lim = True
             self.autotxt.set('Auto')
 
     def set_ylim(self, ymin, ymax):
@@ -331,7 +343,7 @@ class InspectorProfile(tk.Frame):
         self.x_minvar.set('{:.5f}'.format(xmin))
         self.x_maxvar.set('{:.5f}'.format(xmax))
 
-    def get_ylim(self):
+    def get_ylims(self):
         try:
             y_min = float(self.y_minvar.get())
             y_max = float(self.y_maxvar.get())
@@ -339,7 +351,7 @@ class InspectorProfile(tk.Frame):
         except ValueError:
             return None, None
 
-    def get_xlim(self):
+    def get_xlims(self):
         try:
             x_min = float(self.x_minvar.get())
             x_max = float(self.x_maxvar.get())
@@ -353,12 +365,11 @@ class InspectorProfile(tk.Frame):
     def deactivate(self):
         self.grid_forget()
 
-    def setAx(self, ax):
+    def setAx(self, ax): # P Plot
         self.ax = ax
-        ymin, ymax = self.ax.get_ylim()
-        xmin, xmax = self.ax.get_xlim()
-        self.set_ylim(ymin, ymax)
-        self.set_xlim(xmin, xmax)
+        xlims, ylims = self.pplot.get_ax_lims()
+        self.set_ylim(*ylims)
+        self.set_xlim(*xlims)
 
     def setTime(self, t):
         self.ellapsed_time_var.set(str(round(t, 4)))
@@ -456,7 +467,7 @@ class InspectorSpatiotemporal(tk.Frame):
         self.choosecolorbox.current(0)
         self.choosecolorbox.grid(column=1, row=5, padx=10, pady=10)
 
-    def setIm(self, im):
+    def setIm(self, im): # also interact with S-T Plot
         self.im = im
         vmin, vmax = self.im.get_clim()
         self.set_vlim(vmin, vmax)
@@ -510,7 +521,7 @@ class InspectorSpatiotemporal(tk.Frame):
             self.auto_lim = True
             self.autotxt.set('Auto')
 
-    def change_field(self, event):
+    def change_field(self, event): # this should interact with S-T Plot
         new_active_field_indx = self.choosefieldcbox.current()
         if new_active_field_indx != self.active_field_indx:
             self.active_field_indx = new_active_field_indx
@@ -518,13 +529,13 @@ class InspectorSpatiotemporal(tk.Frame):
             self.parent.mainpg.replot_spatiotemp()
 
 
-    def change_cmap(self, event):
+    def change_cmap(self, event): # same sis
         new_active_cmap = self.choosecolorbox.current()
         if new_active_cmap != self.active_cmap[self.active_field_indx]:
             self.active_cmap[self.active_field_indx] = new_active_cmap
             self.parent.mainpg.replot_spatiotemp()
     
-    def get_current_cmap(self):
+    def get_current_cmap(self): # same
         return COLORMAPS[self.active_cmap[self.active_field_indx]]
 
     def activate(self):
@@ -650,6 +661,156 @@ class ParameterWindow:
             self.parameters[p].var.set(str(self.eq.initParams[p]))
 
 
+class ProfilePlot:
+    def __init__(self, fig, ax, profile_inspector, controller):
+        self.fig = fig
+        self.ax = ax
+        self.profile_inspector = profile_inspector
+        self.controller = controller
+        self.eq = controller.eq
+
+        self.profile_inspector.initProfilePlot(self)
+
+        self.Fields = self.eq.getInitCondFields()
+
+        self.active_field_indx = 0
+        self.current_colors = [_i + 1 for _i in range(self.eq.n_fields)]
+        
+        self.set_label('x', 'u')
+        self.draw_fields()
+
+        self.auto_lim = True
+
+    def set_label(self, xlabel, ylabel):
+        self.ax.set_xlabel(xlabel)
+        self.ax.set_ylabel(ylabel)
+
+    def get_shown_field_indx(self):
+        """ Returns a list of indices of all shown fields """
+        return [i for i, color in enumerate(self.current_colors) if color != 0]
+
+    def getCurrentColorActiveField(self):
+        return self.current_colors[self.active_field_indx]
+
+    def setCurrentColorActiveField(self, color):
+        self.current_colors[self.active_field_indx] = color
+        self.redraw_fields()
+
+
+    def auto_update_lims(self):
+        xmin, xmax = self.eq.get_xlims()
+        # get min and max between all currently shown fields
+        ymin, ymax = self.eq.get_fields_lims(indices=self.get_shown_field_indx())
+        ymin, ymax = d10p(ymin), i10p(ymax) # decrease and increase in 10%
+
+        self.profile_inspector.set_xlim(xmin, xmax)
+        self.profile_inspector.set_ylim(ymin, ymax)
+
+        self.set_lims((xmin, xmax), (ymin, ymax))
+
+    def set_lims(self, xlims, ylims):
+        xmin, xmax = xlims
+        ymin, ymax = ylims
+
+        if xmin is not None:
+            self.ax.set_xlim(xmin, xmax)
+        
+        if ymin is not None:
+            self.ax.set_ylim(ymin, ymax)
+
+    def get_ax_lims(self):
+        return self.ax.get_xlim(), self.ax.get_ylim()
+
+    def manual_update_lims(self):
+        self.set_lims(self.profile_inspector.get_xlims(), self.profile_inspector.get_ylims())
+
+    def update_fields(self): # P Plot // feed fields?
+        for i in range(len(self.Fields)):
+            if self.lines[i] is not None:
+                self.lines[i].set_ydata(self.Fields[i])
+                self.lines[i].set_xdata(self.eq.x)
+
+    def draw_fields(self):
+        self.lines = []
+        for i in range(len(self.Fields)):
+            curfield = self.Fields[i]
+            color = self.current_colors[i]
+            if COLORS[color] == 'none':
+                line = None
+            else:
+                line, = self.ax.plot(self.eq.x, curfield, 'tab:' + COLORS[color])
+            self.lines.append(line)
+
+    def redraw_fields(self): # P Plot /// ok
+        self.ax.cla()
+        self.draw_fields()
+
+    def resetActiveField(self):
+        self.active_Field = self.Fields[self.active_field_indx]
+
+    def activeFieldToCurrent(self):
+        self.Fields[self.active_field_indx] = self.active_Field
+
+    def saveEditandTick(self):
+        self.activeFieldToCurrent()
+        self.eq.tick(newInitCondFields=self.Fields)
+
+    def update(self):
+        self.Fields = self.eq.getCurrentFields()
+        self.resetActiveField()
+        self.update_fields()
+
+        if self.auto_lim:
+            self.auto_update_lims()
+        else:
+            self.manual_update_lims()
+        return self.lines
+
+    def raw_xtoi(self, x):  # from raw_x to i
+        return self.xtoi(x, isRaw=True)
+
+    def xtoi(self, x, isRaw=False, truncate=False):
+        x0 = self.controller.eq.x[0]
+        xf = self.controller.eq.x[-1]
+        Ni = round(self.controller.eq.N / self.controller.eq.n_fields)
+        _N = RAW_N if isRaw else Ni
+        i = (x - x0) / (xf - x0) * _N
+        if not truncate:
+            i = round(i)
+        return int(i)
+
+    def updateY(self, xdata, ydata): # improve this pls
+        xi = self.xtoi(xdata)
+        self.resetActiveField()
+        if xi < len(self.active_Field) - 4 and xi >= 4:
+
+            ### interpolate
+            raw_dx = (self.eq.x[-1] - self.eq.x[0]) / (RAW_N - 1)
+            x0 = xdata - raw_dx / 2
+            xf = xdata + raw_dx / 2
+
+            i_0 = self.xtoi(x0)
+            i_f = self.xtoi(xf)
+            i_s = np.array([i_0, xi, i_f])
+
+            xs_interval = self.eq.x[i_s]
+            ys_interval = np.array([self.active_Field[i_0], ydata, self.active_Field[i_f]])
+            ys_interp = interp1d(xs_interval, ys_interval)
+
+            i_0 = self.xtoi(xdata - raw_dx / 2)
+            i_f = self.xtoi(xdata + raw_dx / 2)
+
+            # replace old values of ys
+            self.active_Field[i_0:i_f + 1] = ys_interp(self.eq.x[i_0:i_f + 1])
+        elif xi < 4:
+            self.active_Field[0:4] = ydata
+        else:
+            self.active_Field[-4:] = ydata
+        self.activeFieldToCurrent()
+        self.update_fields()
+
+
+
 class MainPage(tk.Frame):
 
     def __init__(self, parent, controller):
@@ -670,22 +831,8 @@ class MainPage(tk.Frame):
         label.grid(row=0, column=1)
 
         btn2 = ttk.Button(self, text='Reset',
-                          command=self.resetInitCond)
+                          command=self.controller.resetEqInitCond)
         btn2.grid(row=0, column=2)
-
-        ### Initialize plot
-        # x = np.arange(10)
-        # y = x**2
-
-        # change line?
-        # line, = a.plot(x, y)
-        # lb = LineBuilder(line)
-        # line, = fig.add_subplot(111).plot(x, y)
-
-    def resetInitCond(self):
-        self.controller.resetEqInitCond()
-        # solve
-        self.solve_cycle()
 
     def deactivate(self):
 
@@ -700,23 +847,11 @@ class MainPage(tk.Frame):
         self.deactivate()
         self.controller.show_frame(StartPage)
 
-    def draw_fields(self):
-        self.lines = []
-        print(len(self.Fields), len(self.inspector.profile.current_colors))
-        for i in range(len(self.Fields)):
-            curfield = self.Fields[i]
-            color = self.inspector.profile.current_colors[i]
-            if COLORS[color] == 'none':
-                line = None
-            else:
-                line, = self.ax.plot(self.eqX, curfield, 'tab:' + COLORS[color])
-            self.lines.append(line)
-
     def activate(self):
 
         self.active = True
 
-        self.mustClear = False
+        self.mustClear = False # who are you
         self.clicked = False
         self.released = False
         self.i_release = 0 
@@ -783,14 +918,11 @@ class MainPage(tk.Frame):
 
         self.fig = Figure(figsize=(10, 10), dpi=100)
         self.ax = self.fig.add_subplot(211)
-        self.ax.set_xlabel('x')
-        self.ax.set_ylabel('u')
+
+        self.pplot = ProfilePlot(self.fig, self.ax, self.inspector.profile, self.controller) 
 
         self.eqX = eq.x
         self.Fields = eq.getInitCondFields()
-
-        # self.line, = self.ax.plot(eq.x, eq.initCond)
-        self.draw_fields()
 
         ## Spatiotemporal diagram
         self.ax2 = self.fig.add_subplot(212)
@@ -813,8 +945,6 @@ class MainPage(tk.Frame):
         self.canvas.mpl_connect('button_release_event', self.off_click)
         self.canvas.mpl_connect('motion_notify_event', self.move_click)
 
-        self.toolbar = NavigationToolbar2Tk(self.canvas, self.container_mpl)
-        self.toolbar.update()
         self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
@@ -832,14 +962,12 @@ class MainPage(tk.Frame):
 
         self.isEditing = False
         self.isPaused = False
-        self.k_spatiotemp = 0
-        self.k_sol = 0
-        self.t = 0
-        self.last_params = eq.getCurrentParams()
-
-        self.inspector.profile.setAx(self.ax)
+        self.k_spatiotemp = 0 # same sis
+        self.k_sol = 0 # shouldnt be needed anymore
+        self.t = 0 # same sis
         ### Start animation
 
+        # save event_source
         self.ani = animation.FuncAnimation(self.fig, self.animate, frames=60, interval=100, blit=False)
 
     def record(self):
@@ -867,13 +995,12 @@ class MainPage(tk.Frame):
         self.img_recording = True
         self.btn_record.configure(image=self.recordingimg)
 
-    def edit(self):
+    def edit(self): # send signal to P Plot that is editing
         print(f'Edit clicked!, isEditing = {not self.isEditing}')
         if self.isEditing:
             self.isEditing = False
         else:
             self.isEditing = True
-            # self.animate(-1)
 
     def pause(self):
         if self.isPaused: return
@@ -882,11 +1009,6 @@ class MainPage(tk.Frame):
     def play(self):
         if not self.isPaused: return
         self.isPaused = False
-        # self.release = True
-        # if self.isEditing:
-        #     self.isEditing = False
-        #     self.released = True
-        self.animate(-1)
 
     def save(self):
         self.pause()
@@ -922,14 +1044,12 @@ class MainPage(tk.Frame):
         self.parentEntryWindow.destroy()
 
     def on_click(self, event):
-        if event.inaxes == self.ax:
+        if event.inaxes == self.ax: # call p plot
             self.controller.activePlot = (self.ax, PROFILE)
             self.inspector.showProfile()
             if self.isEditing:
                 self.clicked = True
-                self.updateY(event.xdata, event.ydata)
-            # self.animate(-1)
-            # print(event.xdata, event.ydata)
+                self.pplot.updateY(event.xdata, event.ydata)
         elif event.inaxes == self.ax2:
             self.inspector.showSpatiotemp()
             self.controller.activePlot = (self.ax2, SPATIOTEMPORAL)
@@ -939,21 +1059,17 @@ class MainPage(tk.Frame):
             self.clicked = False
             self.released = True
             self.isEditing = False
-            self.animate(-1)
-            # if not self.isPaused:
-            #     self.play()
+            self.pplot.saveEditandTick()
 
     def move_click(self, event):
-        if event.inaxes == self.ax and self.clicked:
-            self.updateY(event.xdata, event.ydata)
-            # self.animate(-1)
+        if event.inaxes == self.ax and self.clicked: #call pplot
+            self.pplot.updateY(event.xdata, event.ydata)
 
     def stop_animation(self):
         self.anim_stopped = True
         self.ani.event_source.stop()
 
     def createParamWindow(self, eq):
-
         # create new window
         self.parentParamWindow = tk.Toplevel(self)
         self.paramWindow = ParameterWindow(self.parentParamWindow, '400x500', eq)
@@ -964,7 +1080,6 @@ class MainPage(tk.Frame):
         self.imageWindow = ImageWindow(self.parentImageWindow, filename)
 
     def createInspectorWindow(self, eq):
-
         self.parentInspectorWindow = tk.Toplevel(self)
         self.inspector = InspectorWindow(self.parentInspectorWindow, self.controller, self)
 
@@ -977,24 +1092,12 @@ class MainPage(tk.Frame):
     def killImageWindow(self):
         self.parentImageWindow.destroy()
 
-    def solve_cycle(self):
-        eq = self.controller.eq
-        eq.solve()
-        eq.initCond = eq.sol[:, -1]
-        self.k_sol = 0
-
-    def update_fields(self):
-        for i in range(len(self.Fields)):
-            if self.lines[i] is not None:
-                self.lines[i].set_ydata(self.Fields[i])
-                self.lines[i].set_xdata(self.controller.eq.x)
-
-    def redraw_spatiotemp_field(self):
+    def redraw_spatiotemp_field(self): # S-T Plot
         self.imvals = np.zeros((ST_ROWS, self.controller.eq.getN()))
         self.k_spatiotemp = 0
         self.imvals[self.k_spatiotemp, :] = self.Fields[self.inspector.spatiotemp.active_field_indx]
 
-    def replot_spatiotemp(self):
+    def replot_spatiotemp(self): # S-T Plot
         active_cmap = self.inspector.spatiotemp.get_current_cmap()
         eq = self.controller.eq
         self.ax2.clear()
@@ -1004,15 +1107,8 @@ class MainPage(tk.Frame):
         self.colorbar = self.fig.colorbar(self.im, ax=self.ax2, orientation='horizontal')
         self.ax2.set_ylabel('t')
 
-    def redraw_fields(self):
-        self.ax.cla()
-        self.draw_fields()
-
-    def resetActiveField(self):
-        self.active_Field = self.Fields[self.inspector.profile.active_field_indx]
-
-    def activeFieldToCurrent(self):
-        self.Fields[self.inspector.profile.active_field_indx] = self.active_Field
+    def getAnimIterables(self): # this will change
+        return self.pplot.lines + [self.im]
 
     def animate(self, i):
         global ST_ROWS
@@ -1020,43 +1116,23 @@ class MainPage(tk.Frame):
         eq = self.controller.eq
         eq.updateX()
 
-        if i == -1:
-            # i = self.last_i  # no estuy usando
-
-            if self.released:
-                print('Released!')
-                self.activeFieldToCurrent()
-                eq.setInitCondFields(self.Fields)
-                self.solve_cycle()
-                self.released = False
-                return self.lines
-
-        elif not self.isPaused:
-            self.last_i = i  # tpco toy usando
-
-
+        # Paused part should stay here and isEditing go to PPlot
         if self.isPaused or self.isEditing:
-            return self.lines + [self.im]
+            return self.getAnimIterables()
 
-        new_params = eq.getCurrentParams()
+        eq.tick()
+        self.Fields = eq.getCurrentFields() # equation tick /// ok
+        self.inspector.profile.setTime(self.t) # PPlot + equation i guesss
 
-        if self.k_sol == 0 or new_params != self.last_params:
-            self.solve_cycle()
-        self.Fields = eq.getFields(self.k_sol)
-        self.resetActiveField()
-        self.inspector.profile.setTime(self.t)
-        self.update_fields()  # draw fields
+        self.imvals[self.k_spatiotemp, :] = self.Fields[self.inspector.spatiotemp.active_field_indx] # S-TPlot
+        self.im.set_data(self.imvals) # S-TPlot
 
-        self.imvals[self.k_spatiotemp, :] = self.Fields[self.inspector.spatiotemp.active_field_indx]
-        self.im.set_data(self.imvals)
-        
-        xmin = np.min(self.Fields)
-        xmax = np.max(self.Fields)
-
-        vmin = np.min(self.imvals)
+        vmin = np.min(self.imvals) # this should be in SpatioTemporalPlot
         vmax = np.max(self.imvals)
 
-        if self.inspector.spatiotemp.auto_lim:
+        self.pplot.update()
+
+        if self.inspector.spatiotemp.auto_lim: # this would go in SpatioTemPlot
             self.im.set_clim(vmin, vmax)
             self.im.set_extent([eq.x[0], eq.x[-1], 0, ST_ROWS])
             self.inspector.spatiotemp.set_vlim(vmin, vmax)
@@ -1068,7 +1144,7 @@ class MainPage(tk.Frame):
             self.inspector.spatiotemp.set_ylim(_ymin, _ymax)
 
         else:
-            for _type in ('x', 'y', 'v'):
+            for _type in ('x', 'y', 'v'): # also in SpatioTempPlot
                 _min, _max = self.inspector.spatiotemp.get_lim(_type)
                 if _min is not None:
                     if _type == 'x':   self.ax2.set_xlim(_min, _max)
@@ -1085,82 +1161,10 @@ class MainPage(tk.Frame):
                         self.ax2.set_ylim(_min, _max)
                     elif _type == 'v': self.im.set_clim(_min, _max)
         
-        if self.inspector.profile.auto_lim:
-            ymin = vmin - abs(vmin) / 10
-            ymax = vmax + abs(vmax) / 10
+        if self.recording: # in equation tick() /// ok
+            self.animate_record() # except for this 
+        self.k_spatiotemp = (self.k_spatiotemp + 1) % ST_ROWS # in ST tick/animate/update
+        self.t += eq.getParam('dt') # PPlot
+        return self.getAnimIterables()
 
-            self.ax.set_ylim(min(ymin, xmin - abs(xmin) / 10), max(ymax, xmax + abs(xmax) / 10))
-            self.inspector.profile.set_ylim(min(ymin, xmin - abs(xmin) / 10), max(ymax, xmax + abs(xmax) / 10))
 
-            self.ax.set_xlim(eq.x[0], eq.x[-1])
-
-        else:
-            ymin, ymax = self.inspector.profile.get_ylim()
-            xmin, xmax = self.inspector.profile.get_xlim()
-            if ymin is not None:
-                self.ax.set_ylim(ymin, ymax)
-            if xmin is not None:
-                self.ax.set_xlim(xmin, xmax)
-
-        if self.recording:
-            eq.saveRecord(self.k_sol)
-            self.animate_record()
-        self.k_spatiotemp = (self.k_spatiotemp + 1) % ST_ROWS
-        self.k_sol = (self.k_sol + 1) % 60
-        self.t += eq.getParam('dt')
-        self.last_params = eq.getCurrentParams()
-        return self.lines + [self.im]
-
-    def raw_xtoi(self, x):  # from raw_x to i
-        return self.xtoi(x, isRaw=True)
-
-    def xtoi(self, x, isRaw=False, truncate=False):
-        x0 = self.controller.eq.x[0]
-        xf = self.controller.eq.x[-1]
-        Ni = round(self.controller.eq.N / self.controller.eq.n_fields)
-        _N = RAW_N if isRaw else Ni
-        i = (x - x0) / (xf - x0) * _N
-        if not truncate:
-            i = round(i)
-        return int(i)
-
-    def xstois(self, xs):
-        i_s = np.zeros(len(xs), dtype='int64')
-        for i in range(len(xs)):
-            i_s[i] = self.xtoi(xs[i])
-
-    def updateY(self, xdata, ydata):
-        xi = self.xtoi(xdata)
-        # self.active_Field = self.Fields[self.inspector.profile.active_field_indx]
-        self.resetActiveField()
-        if xi < len(self.active_Field) - 4 and xi >= 4:
-
-            ### interpolate
-            raw_dx = (self.controller.eq.x[-1] - self.controller.eq.x[0]) / (RAW_N - 1)
-            x0 = xdata - raw_dx / 2
-            xf = xdata + raw_dx / 2
-
-            i_0 = self.xtoi(x0)
-            i_f = self.xtoi(xf)
-            i_s = np.array([i_0, xi, i_f])
-
-            xs_interval = self.controller.eq.x[i_s]
-            ys_interval = np.array([self.active_Field[i_0], ydata, self.active_Field[i_f]])
-            ys_interp = interp1d(xs_interval, ys_interval)
-
-            i_0 = self.xtoi(xdata - raw_dx / 2)
-            i_f = self.xtoi(xdata + raw_dx / 2)
-
-            # replace old values of ys
-            self.active_Field[i_0:i_f + 1] = ys_interp(self.controller.eq.x[i_0:i_f + 1])
-        elif xi < 4:
-            self.active_Field[0:4] = ydata
-        else:
-            self.active_Field[-4:] = ydata
-        self.activeFieldToCurrent()
-        self.update_fields()
-
-    def clear(self):
-        self.ax.clear()
-        self.mustClear = True
-        # self.line, = self.ax.plot([], [])
