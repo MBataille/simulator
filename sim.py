@@ -29,7 +29,7 @@ class SimApp(tk.Tk):
 
 		## icon
 		# t.Tk.iconbitmap(self, default='clienticon.ico')
-		tk.Tk.wm_title(self, 'Simulator v0.1')
+		tk.Tk.wm_title(self, 'Simulator v0.11')
 		self.geometry('512x768')
 		if ttk_themes:
 			self.style = ThemedStyle(self)
