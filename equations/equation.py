@@ -36,7 +36,7 @@ def cantBeZero(name):
     return False
 
 class Equation:
-    def __init__(self, name, initParams, dim=1, N=200, isComplex=False, n_fields=1, fieldNames=['u']):
+    def __init__(self, name, initParams, dim=1, N=200, isComplex=False, n_fields=1, fieldNames=['u'], auxFieldNames=[]):
         self.name = name
         self.dim = dim
         self.initParams = initParams
@@ -45,6 +45,7 @@ class Equation:
         self.isComplex = isComplex
         self.fieldNames = fieldNames
   
+        self.auxFieldNames = auxFieldNames
         # init tick // Perhaps this should go outside?
         self.recording = False
         self.init_tick()
@@ -55,6 +56,7 @@ class Equation:
         self.solver = INTEGRATION_METHODS[0]
 
         self.n_fields = n_fields
+        self.n_aux_fields = len(auxFieldNames)
 
         # each field will have N points
         self.setNi(N)
@@ -83,8 +85,15 @@ class Equation:
         # may not be necessary
         # return self.getFields(self.k_sol)
 
+    def getAuxFields(self, *args):
+        return []
+
     def getCurrentFields(self): # return Fields at k = k_sol
         return self.getFields(self.k_sol)
+
+    def getCurrentAuxFields(self):
+        Fields = self.getFields(self.k_sol)
+        return self.getAuxFields(*Fields)
 
     def solve_cycle(self):
         self.solve()
@@ -312,10 +321,14 @@ class Equation:
     
     def get_fields_lims(self, indices=None):
         if indices is None: indices = range(self.n_fields)
-        fields = self.getFields(self.k_sol)
+        fields = self.getCurrentFields()
+        auxfields = self.getCurrentAuxFields()
         fmin, fmax = np.inf, -np.inf
         for i in indices:
-            fm, fM = fields[i].min(), fields[i].max()
+            if i >= self.n_fields:
+                fm, fM = auxfields[i-self.n_fields].min(), auxfields[i-self.n_fields].max()
+            else:
+                fm, fM = fields[i].min(), fields[i].max()
             if fm < fmin: fmin = fm
             if fM > fmax: fmax = fM
         return fmin, fmax
