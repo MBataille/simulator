@@ -873,7 +873,7 @@ class PlotWindow(tk.Frame):
 
         tk.Frame.__init__(self, parent)
 
-        self.fig = Figure(figsize=(4, 4), dpi=100)
+        self.fig = Figure(figsize=(10, 10), dpi=100)
         self.ax = self.fig.add_subplot(111)
 
         ## draw canvas
@@ -895,7 +895,6 @@ class PlotWindow(tk.Frame):
         self.container_mpl.grid(row=0, column=0, sticky='ns')
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
-        self.grid(row=0, column=0)
 
     def start_anim(self):
         event_source = self.mainpg.ani.event_source
@@ -1129,8 +1128,10 @@ class MainPage(tk.Frame):
 
     def add_window(self):
         parent_new_window = tk.Toplevel(self)
+        parent_new_window.geometry('512x512')
         self.parentNewWindows.append(parent_new_window)
         pw = ProfileWindow(parent_new_window, self.controller, self, self.inspector.profile)
+        pw.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.newWindows.append(pw)
         pw.start_anim()
 

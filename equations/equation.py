@@ -218,7 +218,6 @@ class Equation:
         self.k_recording = None
         self.path_recording = None
         self.recording = False
-
     def saveState(self, k, filename):
         folder = self.getDataFolder()
         _vals = self.sol[:, k]
@@ -233,7 +232,7 @@ class Equation:
             return
 
         data = np.load(folder + filename + '.npz')
-
+        #  print(data['vals'], data['pvals'], data['pnames'])
         self.setInitialCondition(data['vals'])
         self.Ni = int(data['pvals'][0])
         self.N = int(self.Ni * self.n_fields)
