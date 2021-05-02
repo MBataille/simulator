@@ -1081,7 +1081,7 @@ class MainPage(tk.Frame):
         xf = eq.x[-1]
         self.im = self.ax2.imshow(self.imvals, extent=[x0, xf, 0, ST_ROWS], aspect='auto', origin='lower')
         # self.ax2.set_xlabel('x')
-        self.ax2.set_ylabel('t')
+        self.ax2.set_ylabel('time steps')
         self.colorbar = self.fig.colorbar(self.im, ax=self.ax2, orientation='horizontal')
 
         ## Draw canvas
