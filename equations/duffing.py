@@ -36,7 +36,7 @@ class Duffing(Equation):
 	def kuramoto_local_order_param(self, theta):
 		N = self.getN()
 		absz = np.zeros(N)
-		R = int(np.sqrt(N))
+		R = int(np.sqrt(N)/4)
 		for i in range(N):
 			thetas = theta[i-R:i+R]
 			if self.boundary_condition == 'neumann':

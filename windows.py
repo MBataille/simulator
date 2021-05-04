@@ -441,7 +441,6 @@ class InspectorSpatiotemporal(tk.Frame):
         self.y_minval.grid(column=3, row=2)
         self.y_maxval.grid(column=3, row=1)
 
-        self.auto_lim = True
         self.autotxt = tk.StringVar()
         self.autotxt.set('Auto')
         self.autobtn = ttk.Button(self, textvariable=self.autotxt, command=self.set_auto)
@@ -456,17 +455,29 @@ class InspectorSpatiotemporal(tk.Frame):
         self.choosefieldcbox.bind('<<ComboboxSelected>>', self.change_field)
         self.choosefieldcbox.current(0)
         self.choosefieldcbox.grid(column=1, row=4, padx=10, pady=10)
-        self.active_field_indx = 0
 
         self.choosecolorlbl = ttk.Label(self, text='Colormap: ', font=MED_FONT)
         self.choosecolorlbl.grid(column=0, row=5, padx=10, pady=10)
 
-        self.active_cmap = [0] * (self.parent.controller.eq.n_fields + self.parent.controller.eq.n_aux_fields)
         self.choosecolorbox = ttk.Combobox(self, state='readonly', width=10)
         self.choosecolorbox['values'] = COLORMAPS
         self.choosecolorbox.bind('<<ComboboxSelected>>', self.change_cmap)
         self.choosecolorbox.current(0)
         self.choosecolorbox.grid(column=1, row=5, padx=10, pady=10)
+
+    def initSpatioTempPlot(self, stplot):
+        self.stplot = stplot
+        self.setIm(stplot.im)
+
+    def changeSTPlot(self, stplot):
+        self.stplot = stplot
+
+        for limtype in ('x', 'y', 'v'):
+            self.set_lim(*stplot.get_ax_lim(limtype), limtype)
+
+        self.choosefieldcbox.current(stplot.active_field_indx)
+        self.choosecolorbox.current(stplot.getCurrentColormap())
+        self.autotxt.set("Auto" if self.stplot.auto_lim else "Manual")
 
     def setIm(self, im): # also interact with S-T Plot
         self.im = im
@@ -481,17 +492,6 @@ class InspectorSpatiotemporal(tk.Frame):
         elif type == 'v':
             var_min, var_max = self.v_minvar, self.v_maxvar
         return var_min, var_max
-
-    def isActiveFieldAux(self):
-        return self.active_field_indx >= self.parent.controller.eq.n_fields
-    
-    def getActiveField(self):
-        eq = self.parent.controller.eq
-        if self.isActiveFieldAux():
-            indx = self.active_field_indx - eq.n_fields
-            return eq.getCurrentAuxFields()[indx]
-        else:
-            return eq.getCurrentFields()[self.active_field_indx]
 
     def get_lim(self, type):
         minvar, maxvar = self.get_minmax_type(type)
@@ -526,29 +526,21 @@ class InspectorSpatiotemporal(tk.Frame):
         return self.get_lim('v')
 
     def set_auto(self):
-        if self.auto_lim:
-            self.auto_lim = False
+        if self.stplot.auto_lim:
+            self.stplot.auto_lim = False
             self.autotxt.set('Manual')
         else:
-            self.auto_lim = True
+            self.stplot.auto_lim = True
             self.autotxt.set('Auto')
 
-    def change_field(self, event): # this should interact with S-T Plot
+    def change_field(self, event): # this should interact with S-T Plot // prep
         new_active_field_indx = self.choosefieldcbox.current()
-        if new_active_field_indx != self.active_field_indx:
-            self.active_field_indx = new_active_field_indx
-            self.choosecolorbox.current(self.active_cmap[self.active_field_indx])
-            self.parent.mainpg.replot_spatiotemp()
+        self.stplot.setActiveField(new_active_field_indx)
+        self.choosecolorbox.current(self.stplot.getCurrentColormap())
 
-
-    def change_cmap(self, event): # same sis
+    def change_cmap(self, event): # same sis // prep
         new_active_cmap = self.choosecolorbox.current()
-        if new_active_cmap != self.active_cmap[self.active_field_indx]:
-            self.active_cmap[self.active_field_indx] = new_active_cmap
-            self.parent.mainpg.replot_spatiotemp()
-    
-    def get_current_cmap(self): # same
-        return COLORMAPS[self.active_cmap[self.active_field_indx]]
+        self.stplot.setCurrentColormap(new_active_cmap)
 
     def activate(self):
         self.grid(row=0, column=0)
@@ -588,6 +580,8 @@ class InspectorWindow(tk.Frame):
     def showSpatiotemp(self):
         print('showing spatiotemp')
         self.showFrame(self.spatiotemp)
+        if self.controller.activePlot is not None:
+            self.spatiotemp.changeSTPlot(self.controller.activePlot[-1])
         self.activeFrame = self.spatiotemp
 
     def showFrame(self, frame):
@@ -856,6 +850,132 @@ class ProfilePlot:
         self.activeFieldToCurrent()
         self.update_fields()
 
+class SpatioTemporalPlot():
+
+    def __init__(self, fig, ax, spatiotemp_inspector, controller):
+        self.fig = fig
+        self.ax = ax
+        self.spatiotemp_inspector = spatiotemp_inspector
+        self.controller = controller
+        self.eq = controller.eq
+        self.k_st = 0 # k spatiotemp
+        self.st_rows = ST_ROWS
+
+        self.Fields = self.eq.getInitCondFields()
+        self.auxFields = self.eq.getAuxFields(*self.Fields)
+
+        self.auto_lim = True
+        self.active_field_indx = 0
+        self.current_cmap = [0] * (self.eq.n_fields + self.eq.n_aux_fields)
+
+        self.imvals = np.zeros((self.st_rows, self.eq.getN()))
+        self.plot()
+
+        self.spatiotemp_inspector.initSpatioTempPlot(self)
+
+    def plot(self):
+        active_cmap = COLORMAPS[self.getCurrentColormap()]
+        self.im = self.ax.imshow(self.imvals, cmap=active_cmap, extent=[self.eq.x[0], self.eq.x[1], 0, ST_ROWS], aspect='auto', origin='lower')
+        self.colorbar = self.fig.colorbar(self.im, ax=self.ax, orientation='horizontal')
+        self.set_label('x', 't (time steps)')
+
+    def set_label(self, xlabel, ylabel):
+        self.ax.set_xlabel(xlabel)
+        self.ax.set_ylabel(ylabel)
+
+    def getCurrentColormap(self):
+        return self.current_cmap[self.active_field_indx]
+
+    def setCurrentColormap(self, color_indx):
+        if color_indx != self.current_cmap[self.active_field_indx]:
+            self.current_cmap[self.active_field_indx] = color_indx
+            self.replot()
+
+    def setActiveField(self, indx):
+        if indx != self.active_field_indx:
+            self.active_field_indx = indx
+            self.reset()
+            self.replot()
+
+    def getActiveField(self):
+        return self.eq.getCurrentField(self.active_field_indx)
+
+    def replot(self):
+        self.ax.clear()
+        self.colorbar.remove()
+        self.plot()
+
+    def isSpatioTempInspectorActive(self):
+        return self.spatiotemp_inspector.stplot == self
+
+    def reset(self):
+        self.imvals = np.zeros((self.st_rows, self.eq.getN()))
+        self.k_st = 0
+        self.imvals[self.k_st, :] = self.getActiveField()
+        self.replot()
+    
+    def auto_update(self):
+
+        #  calc lims        
+        vmin = np.min(self.imvals)
+        vmax = np.max(self.imvals)
+
+        # update axes lims
+        self.im.set_extent([self.eq.x[0], self.eq.x[-1], 0, self.st_rows])
+        self.im.set_clim(vmin, vmax)
+
+        # tell inspector
+        if self.isSpatioTempInspectorActive():
+            self.spatiotemp_inspector.set_xlim(self.eq.x[0], self.eq.x[-1])
+            self.spatiotemp_inspector.set_ylim(0, self.st_rows)
+            self.spatiotemp_inspector.set_vlim(vmin, vmax)
+
+    def set_lim(self, limtype, _min, _max):
+        if _min is None: return
+        if limtype == 'x':
+            self.ax.set_xlim(_min, _max)
+        elif limtype == 'v':
+            self.im.set_clim(_min, _max)
+        elif limtype == 'y':
+            if _max > self.st_rows:
+                new_rows = int(_max) - ST_ROWS
+                self.imvals = np.append(self.imvals, np.zeros((new_rows, self.eq.getN())), axis=0)
+                self.st_rows += new_rows
+                self.replot()
+            elif int(_max) != self.st_rows and int(_max) !=  0:
+                self.st_rows = int(_max)
+                self.imvals = self.imvals[:self.st_rows, :]
+                self.k_st = self.k_st % self.st_rows
+                self.replot()
+            self.ax.set_ylim(_min, _max) 
+
+    def get_ax_lim(self, limtype):
+        if limtype == 'x':
+            return self.ax.get_xlim()
+        elif limtype == 'y':
+            return self.ax.get_ylim()
+        elif limtype == 'v':
+            return self.im.get_clim()
+
+    def manual_update(self):
+        if not self.isSpatioTempInspectorActive(): return
+        for limtype in ('x', 'y', 'v'):
+            _min, _max = self.spatiotemp_inspector.get_lim(limtype)
+            self.set_lim(limtype, _min, _max)
+
+
+    def update(self):
+        self.imvals[self.k_st, :] = self.getActiveField()
+        self.im.set_data(self.imvals)
+
+        if self.auto_lim:
+            self.auto_update()
+        else:
+            self.manual_update()
+
+        self.k_st = (self.k_st + 1) % self.st_rows
+        return self.im
+
 
 class PlotWindow(tk.Frame):
 
@@ -912,6 +1032,31 @@ class PlotWindow(tk.Frame):
     def animate(self, i):
         pass
 
+class SpatiotemporalWindow(PlotWindow):
+
+    def __init__(self, parent, controller, mainpg, spatiotemporal_inspector):
+
+        self.spatiotemporal_inspector = spatiotemporal_inspector
+        PlotWindow.__init__(self, parent, controller, mainpg)
+
+        self.stplot = SpatioTemporalPlot(self.fig, self.ax, spatiotemporal_inspector, controller)
+        self.im  = self.stplot.im
+
+    def animate(self, i):
+        if self.isPaused or self.isEditing:
+            return self.im,
+        return self.stplot.update(),
+
+    def on_click(self, event):
+        if event.inaxes == self.ax:
+            self.controller.activePlot = (self.ax, SPATIOTEMPORAL, self.stplot)
+            self.inspector.showSpatiotemp()
+
+    def off_click(self, event):
+        pass
+
+    def move_click(self, event):
+        pass
 
 
 class ProfileWindow(PlotWindow):
@@ -951,7 +1096,6 @@ class ProfileWindow(PlotWindow):
             if event.inaxes == self.pplot.ax:
                 self.pplot.updateY(event.xdata, event.ydata)
 
-
 class MainPage(tk.Frame):
 
     def __init__(self, parent, controller):
@@ -968,16 +1112,33 @@ class MainPage(tk.Frame):
                           command=self.back_home, image=self.btn1img)
         btn1.grid(row=0, column=0)
 
+        initcond_container = tk.Frame(self)
+
         label = ttk.Label(self, text='Interactive PDE simulation', font=LARGE_FONT)
         label.grid(row=0, column=1)
 
-        btn2 = ttk.Button(self, text='Reset',
+        iclabel = ttk.Label(initcond_container, text='Current initial condition: ', font=MED_FONT)
+        iclabel.grid(row=0, column=0, padx=5, pady=5)
+
+        self.initcond_name = tk.StringVar(value='')
+        ciclabel = ttk.Label(initcond_container, textvariable=self.initcond_name, font=MED_FONT)
+        ciclabel.grid(row=0, column=1, padx=5, pady=5)
+
+        btn_reset = ttk.Button(initcond_container, text='Reset',
                           command=self.controller.resetEqInitCond)
-        btn2.grid(row=0, column=2)
+
+        btn_zero = ttk.Button(initcond_container, text='Zero', 
+                            command=self.controller.setEqInitCondZero)
+        
+        btn_reset.grid(row=0, column=2, pady=5)
+        btn_zero.grid(row=0, column=3, pady=5)
+        
+        initcond_container.grid(row=1, column=0, columnspan=3)
 
     def deactivate(self):
 
         self.active = False
+        self.controller.activePlot = None
         self.btn_container.grid_forget()
         self.killParamWindow()
         self.killInspectorWindow()
@@ -1003,7 +1164,7 @@ class MainPage(tk.Frame):
         self.i_release = 0 
 
         self.btn_container = tk.Frame(self)
-        self.btn_container.grid(row=1, columnspan=3)
+        self.btn_container.grid(row=2, columnspan=3)
 
         self.playimg = tk.PhotoImage(file=ICONSFOLDER + 'play.png')
         self.editimg = tk.PhotoImage(file=ICONSFOLDER + 'pen2.png')
@@ -1068,21 +1229,13 @@ class MainPage(tk.Frame):
 
         self.fig = Figure(figsize=(10, 10), dpi=100)
         self.ax = self.fig.add_subplot(211)
+        self.ax2 = self.fig.add_subplot(212) # STW
 
         self.pplots = [ProfilePlot(self.fig, self.ax, self.inspector.profile, self.controller) ]
+        self.stplot = SpatioTemporalPlot(self.fig, self.ax2, self.inspector.spatiotemp, self.controller)
 
         self.eqX = eq.x
         self.Fields = eq.getInitCondFields()
-
-        ## Spatiotemporal diagram
-        self.ax2 = self.fig.add_subplot(212)
-        self.imvals = np.zeros((ST_ROWS, eq.getN()))
-        x0 = eq.x[0]
-        xf = eq.x[-1]
-        self.im = self.ax2.imshow(self.imvals, extent=[x0, xf, 0, ST_ROWS], aspect='auto', origin='lower')
-        # self.ax2.set_xlabel('x')
-        self.ax2.set_ylabel('time steps')
-        self.colorbar = self.fig.colorbar(self.im, ax=self.ax2, orientation='horizontal')
 
         ## Draw canvas
 
@@ -1100,11 +1253,11 @@ class MainPage(tk.Frame):
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         # self.container_mpl.geometry('512x740')
-        self.container_mpl.grid(row=2, column=0, columnspan=3, sticky='ns')
+        self.container_mpl.grid(row=3, column=0, columnspan=3, sticky='ns')
 
 
         # self.rowconfigure(0, weight=1)
-        self.rowconfigure(2, weight=1)
+        self.rowconfigure(3, weight=1)
 
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
@@ -1112,8 +1265,6 @@ class MainPage(tk.Frame):
 
         self.isEditing = False
         self.isPaused = False
-        self.k_spatiotemp = 0 # same sis
-        self.k_sol = 0 # shouldnt be needed anymore
         self.t = 0 # same sis
 
         self.parentNewWindows = []
@@ -1123,14 +1274,17 @@ class MainPage(tk.Frame):
         # save event_source
         self.ani = animation.FuncAnimation(self.fig, self.animate, frames=60, interval=100, blit=False)
 
-    def createNewWindow(self):
-        pass
+    def set_init_cond_zero(self):
+        self.controller.setEqInitCondZero()
 
     def add_window(self):
         parent_new_window = tk.Toplevel(self)
         parent_new_window.geometry('512x512')
         self.parentNewWindows.append(parent_new_window)
-        pw = ProfileWindow(parent_new_window, self.controller, self, self.inspector.profile)
+        if self.controller.activePlot[1] == PROFILE:
+            pw = ProfileWindow(parent_new_window, self.controller, self, self.inspector.profile)
+        elif self.controller.activePlot[1] == SPATIOTEMPORAL:
+            pw = SpatiotemporalWindow(parent_new_window, self.controller, self, self.inspector.spatiotemp)
         pw.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.newWindows.append(pw)
         pw.start_anim()
@@ -1203,7 +1357,7 @@ class MainPage(tk.Frame):
 
     def create_entry_window(self, record=False):
         self.parentEntryWindow = tk.Toplevel(self)
-        self.entrywindow = EntryWindow(self.parentEntryWindow, self, self.controller.eq, self.k_sol, record=record)
+        self.entrywindow = EntryWindow(self.parentEntryWindow, self, self.controller.eq, self.controller.eq.k_sol, record=record)
 
     def kill_entry_window(self):
         self.parentEntryWindow.destroy()
@@ -1218,7 +1372,7 @@ class MainPage(tk.Frame):
                     pplot.updateY(event.xdata, event.ydata)
         if event.inaxes == self.ax2:
             self.inspector.showSpatiotemp()
-            self.controller.activePlot = (self.ax2, SPATIOTEMPORAL)
+            self.controller.activePlot = (self.ax2, SPATIOTEMPORAL, self.stplot)
 
     def off_click(self, event):
         if self.clicked:
@@ -1262,29 +1416,13 @@ class MainPage(tk.Frame):
     def killImageWindow(self):
         self.parentImageWindow.destroy()
 
-    def redraw_spatiotemp_field(self): # S-T Plot
-        self.imvals = np.zeros((ST_ROWS, self.controller.eq.getN()))
-        self.k_spatiotemp = 0
-        self.imvals[self.k_spatiotemp, :] = self.inspector.spatiotemp.getActiveField()
-
-    def replot_spatiotemp(self): # S-T Plot
-        active_cmap = self.inspector.spatiotemp.get_current_cmap()
-        eq = self.controller.eq
-        self.ax2.clear()
-        print('replotting')
-        self.im = self.ax2.imshow(self.imvals, cmap=active_cmap, extent=[eq.x[0], eq.x[-1], 0, ST_ROWS], aspect='auto', origin='lower')
-        self.colorbar.remove()
-        self.colorbar = self.fig.colorbar(self.im, ax=self.ax2, orientation='horizontal')
-        self.ax2.set_ylabel('t')
-
     def getAnimIterables(self): # this will change
         lines = []
         for pplot in self.pplots:
             lines += pplot.lines
-        return lines + [self.im]
+        return lines + [self.stplot.im]
 
     def animate(self, i):
-        global ST_ROWS
         if not self.active: return
         eq = self.controller.eq
         eq.updateX()
@@ -1297,47 +1435,13 @@ class MainPage(tk.Frame):
         self.Fields = eq.getCurrentFields() # equation tick /// ok
         self.inspector.profile.setTime(self.t) # PPlot + equation i guesss
 
-        self.imvals[self.k_spatiotemp, :] = self.inspector.spatiotemp.getActiveField() # S-TPlot
-        self.im.set_data(self.imvals) # S-TPlot
-
-        vmin = np.min(self.imvals) # this should be in SpatioTemporalPlot
-        vmax = np.max(self.imvals)
-
         for pplot in self.pplots:
             pplot.update()
 
-        if self.inspector.spatiotemp.auto_lim: # this would go in SpatioTemPlot
-            self.im.set_clim(vmin, vmax)
-            self.im.set_extent([eq.x[0], eq.x[-1], 0, ST_ROWS])
-            self.inspector.spatiotemp.set_vlim(vmin, vmax)
-
-            _xmin, _xmax = self.ax2.get_xlim()
-            _ymin, _ymax = self.ax2.get_ylim()
-
-            self.inspector.spatiotemp.set_xlim(_xmin, _xmax)
-            self.inspector.spatiotemp.set_ylim(_ymin, _ymax)
-
-        else:
-            for _type in ('x', 'y', 'v'): # also in SpatioTempPlot
-                _min, _max = self.inspector.spatiotemp.get_lim(_type)
-                if _min is not None:
-                    if _type == 'x':   self.ax2.set_xlim(_min, _max)
-                    elif _type == 'y':
-                        if _max > ST_ROWS:
-                            new_rows = int(_max) - ST_ROWS
-                            self.imvals = np.append(self.imvals, np.zeros((new_rows, eq.getN())), axis=0)
-                            ST_ROWS += new_rows
-                            self.replot_spatiotemp()
-                        elif int(_max) != ST_ROWS and int(_max) != 0:
-                            ST_ROWS = int(_max)
-                            self.imvals = self.imvals[:ST_ROWS, :]
-                            self.replot_spatiotemp()
-                        self.ax2.set_ylim(_min, _max)
-                    elif _type == 'v': self.im.set_clim(_min, _max)
-        
+        self.stplot.update()
         if self.recording: # in equation tick() /// ok
             self.animate_record() # except for this 
-        self.k_spatiotemp = (self.k_spatiotemp + 1) % ST_ROWS # in ST tick/animate/update
+
         self.t += eq.getParam('dt') # PPlot
         return self.getAnimIterables()
 

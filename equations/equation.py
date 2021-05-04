@@ -30,6 +30,9 @@ class Parameter:
         except ValueError:
             return self.val
 
+    def setVal(self, value):
+        self.var.set(value)
+
 def cantBeZero(name):
     if name == 'dt' or name == 'dx':
         return True
@@ -46,6 +49,7 @@ class Equation:
         self.fieldNames = fieldNames
   
         self.auxFieldNames = auxFieldNames
+        self.last_update = -1
         # init tick // Perhaps this should go outside?
         self.recording = False
         self.init_tick()
@@ -66,17 +70,20 @@ class Equation:
         self.t0 = 0
         self.last_params = self.getCurrentParams()
 
-    def tick(self, newInitCondFields=None): #  make 1 time step
+    def tick(self, newInitCondFields=None, force_solve=False): #  make 1 time step
         new_params = self.getCurrentParams()
-        if self.k_sol % SOLVE_EVERY_TI == 0 or new_params != self.last_params or newInitCondFields is not None:
+        if self.k_sol % SOLVE_EVERY_TI == 0 or new_params != self.last_params or newInitCondFields is not None or force_solve:
             # just in case
             self.updateX()
             if newInitCondFields is not None:
                 self.setInitCondFields(newInitCondFields)
             self.solve_cycle()
+        else:
+            self.k_sol += 1
         
-        self.k_sol += 1
-        
+        self.currentFields = self.getFields(self.k_sol)
+        self.currentAuxFields = self.getAuxFields(*self.currentFields)
+        self.last_update = self.k_sol
         if self.recording:
             self.saveRecord()
         
@@ -89,16 +96,28 @@ class Equation:
         return []
 
     def getCurrentFields(self): # return Fields at k = k_sol
-        return self.getFields(self.k_sol)
+        if self.last_update == -1 or self.last_update != self.k_sol:
+            return self.getFields(self.k_sol)
+        else:
+            return self.currentFields
 
     def getCurrentAuxFields(self):
-        Fields = self.getFields(self.k_sol)
-        return self.getAuxFields(*Fields)
+        if self.last_update == -1 or self.last_update != self.k_sol:
+            Fields = self.getFields(self.k_sol)
+            return self.getAuxFields(*Fields)
+        return self.currentAuxFields
+    
+    def getCurrentField(self, i):
+        if i < self.n_fields:
+            return self.getCurrentFields()[i]
+        if i-self.n_fields < self.n_aux_fields:
+            return self.getCurrentAuxFields()[i - self.n_fields]
+        return None
 
     def solve_cycle(self):
         self.solve()
         self.initCond = self.sol[:, -1]
-        self.k_sol = 0
+        self.k_sol = 1
 
     def setNi(self, Ni):
         self.Ni = Ni
@@ -117,6 +136,9 @@ class Equation:
 
     def getParam(self, p):
         return self.parameters[p].getVal()
+
+    def setParam(self, p, val):
+        self.parameters[p].setVal(val)
 
     def getCurrentParams(self):
         cparams = {}
@@ -140,12 +162,13 @@ class Equation:
         if self.dim == 2:
             self.initCond = np.zeros((self.N, self.N), dtype=dtype)
 
-    def solve(self):
+    def solve(self, t=None):
         if self.t0 > T0_UPPER_BOUND:
             self.t0 = 0
 
         dt = self.getParam('dt')
-        t = self.t0 + np.linspace(0, 60*dt, 61) # change this
+        if t is None:
+            t = self.t0 + np.linspace(0, SOLVE_EVERY_TI*dt, SOLVE_EVERY_TI + 1) # change this
         # print(t, dt, self.initCond)
         with threadpool_limits(limits=1):
             if self.dim == 1:
@@ -260,7 +283,7 @@ class Equation:
         return self.extractFields(self.sol[:, k])
 
     def getField(self, i, k):
-        if self.n_fields == 1:
+        if self.n_fields + self.n_aux_fields == 1:
             return self.getState(k)
         Ni = self.Ni
         return self.sol[i * Ni:(i + 1) * Ni, k]
