@@ -99,6 +99,7 @@ class SimApp(tk.Tk):
 
 	def setEqInitCond(self, indx):
 		if self.initCond_isMethod(indx):
+			self.eq.init_tick()
 			getattr(self.eq, 'setInitialCondition' + self.initConds[0][indx])()
 			self.current_initcond_name = self.initConds[0][indx]
 		else:
@@ -111,6 +112,7 @@ class SimApp(tk.Tk):
 
 	def setEqInitCondZero(self):
 		self.eq.setInitialConditionZero()
+		self.eq.init_tick()
 		self.solve_cycle()
 
 	def resetEqInitCond(self):

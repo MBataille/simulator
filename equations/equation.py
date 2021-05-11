@@ -83,6 +83,7 @@ class Equation:
         self.last_params = self.getCurrentParams()
 
     def initAuxFields(self):
+        print('hi sis')
         return
 
     def tick(self, newInitCondFields=None, force_solve=False): #  make 1 time step
@@ -96,7 +97,7 @@ class Equation:
         else:
             self.k_sol += 1
         
-        self.currentFields = self.getFields(self.k_sol)
+        self.currentFields = self.getFields(self.k_sol-1)
         self.currentAuxFields = self.getAuxFields(*self.currentFields)
         self.last_update = self.k_sol
         if self.recording:
@@ -264,6 +265,7 @@ class Equation:
         folder = self.getDataFolder()
         _vals = self.sol[:, k]
         _pnames, _pvals = self.paramsToArray()
+
         np.savez_compressed(folder + filename + '.npz', vals=_vals, pnames=_pnames, pvals=_pvals)
 
     def loadState(self, filename):
@@ -278,7 +280,14 @@ class Equation:
         self.setInitialCondition(data['vals'])
         self.Ni = int(data['pvals'][0])
         self.N = int(self.Ni * self.n_fields)
-        self.initParams = self.arraytoInitParams(data['pnames'][1:], data['pvals'][1:])
+        if 't' in data['pnames']:
+            self.t0 = data['pvals'][1]
+            pvals = data['pvals'][2:]
+            pnames = data['pnames'][2:]
+        else:
+            pvals  = data['pvals'][1:]
+            pnames = data['pnames'][1:]
+        self.initParams = self.arraytoInitParams(pnames, pvals)
         self.initParams['noise'] = 0
         self.parameters = self.createParamsDict(self.initParams)
 
@@ -291,8 +300,10 @@ class Equation:
 
     def paramsToArray(self):
         v = self.getCurrentParams()
-        pnames = ['Ni']
-        pvals = [self.Ni]
+        pnames = ['Ni', 't']
+        t = self.t0 + self.k_sol * self.getParam('dt')
+
+        pvals = [self.Ni, t]
         for p in v:
             pnames.append(p)
             pvals.append(v[p])

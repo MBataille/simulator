@@ -28,7 +28,7 @@ class Duffing(Equation):
 	def initAuxFields(self):
 		abszs = np.zeros((SOLVE_EVERY_TI, self.getN()))
 		for k in range(SOLVE_EVERY_TI):
-			theta, absz = self.getAuxFields(*self.getFields(k))
+			theta, absz = self.getAuxFields(*self.getFields(k), calc_kura=True)
 			abszs[k, :] = absz
 		self.abszs = np.abs(hilbert(abszs, axis=0))
 
@@ -63,13 +63,15 @@ class Duffing(Equation):
 			absz[i] = np.abs(np.exp(1j * thetas).sum())/(len(thetas))
 		return absz
 
-	def getAuxFields(self, X, dXdt):
+	def getAuxFields(self, X, dXdt, calc_kura=False):
 		theta = np.arctan2(dXdt, X)
-		#
-		#try:
-		#	absz = self.abszs[self.k_sol-1]
-		#except AttributeError:
-		absz = self.kuramoto_local_order_param(theta)
+		if calc_kura:
+			absz = self.kuramoto_local_order_param(theta)
+		else:
+			try:
+				absz = self.abszs[self.k_sol-1]
+			except AttributeError:
+				absz = self.kuramoto_local_order_param(theta)
 		return theta, absz
 
 	def setInitialConditionIncoherent(self):
