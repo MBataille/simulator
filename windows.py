@@ -653,16 +653,23 @@ class ParameterWindow:
         i = 0
         for p in self.parameters:
             lbl = ttk.Label(self.root, text=self.parameters[p].name, font=MED_FONT)
-            lbl.grid(column=0, row=i + 1, columnspan=1)
+            lbl.grid(column=0, row=i + 1)
             self.paramslbls.append(lbl)
 
-            vals = ttk.Entry(self.root, textvariable=self.parameters[p].var, font=MED_FONT)
-            vals.grid(column=1, row=i + 1, columnspan=2)
+            vals = ttk.Entry(self.root, textvariable=self.parameters[p].var, font=MED_FONT, width=10)
+            vals.grid(column=2, row=i + 1, padx=5)
             self.paramsvals.append(vals)
+
+            if eq.initRange is not None:
+                from_, to = eq.initRange[self.parameters[p].name]
+            else:
+                from_, to = 0, 1
+            scale = ttk.Scale(self.root, orient=tk.HORIZONTAL, variable=self.parameters[p].doublevar, command=self.parameters[p].udv, from_=from_, to=to)
+            scale.grid(column=1, row=i+1)
             i += 1
 
         self.resetBtn = ttk.Button(self.root, text='Reset', command=self.reset)
-        self.resetBtn.grid(column=0, row=len(self.paramslbls) + 1)
+        self.resetBtn.grid(column=0, row=i+1)
 
     def reset(self):
         for p in self.eq.initParams:
@@ -875,7 +882,7 @@ class SpatioTemporalPlot():
 
     def plot(self):
         active_cmap = COLORMAPS[self.getCurrentColormap()]
-        self.im = self.ax.imshow(self.imvals, cmap=active_cmap, extent=[self.eq.x[0], self.eq.x[1], 0, ST_ROWS], aspect='auto', origin='lower')
+        self.im = self.ax.imshow(self.imvals, cmap=active_cmap, extent=[self.eq.x[0], self.eq.x[-1], 0, self.st_rows], aspect='auto', origin='lower')
         self.colorbar = self.fig.colorbar(self.im, ax=self.ax, orientation='horizontal')
         self.set_label('x', 't (time steps)')
 
@@ -1371,8 +1378,8 @@ class MainPage(tk.Frame):
                     self.clicked = True
                     pplot.updateY(event.xdata, event.ydata)
         if event.inaxes == self.ax2:
-            self.inspector.showSpatiotemp()
             self.controller.activePlot = (self.ax2, SPATIOTEMPORAL, self.stplot)
+            self.inspector.showSpatiotemp()
 
     def off_click(self, event):
         if self.clicked:

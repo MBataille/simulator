@@ -1,4 +1,5 @@
-from .equation import Equation, Parameter
+from .equation import Equation, Parameter, SOLVE_EVERY_TI
+from scipy.signal import hilbert
 import numpy as np
 
 class Duffing(Equation):
@@ -12,8 +13,24 @@ class Duffing(Equation):
 					'omega' : 0.7,
 					'kappa' : 0.42, 
 					'delta': 0}
+		
+		initRange = { 'dt' : (0, 0.5),
+					'dx': (0, 1), 
+					'alpha': (0,1),
+					'mu': (0, 0.5),
+					'gamma' : (0, 5),
+					'omega' : (0, 1),
+					'kappa' : (0, 1), 
+					'delta': (0, 1)}
 
-		Equation.__init__(self, 'Duffing', initParams, dim=1, n_fields=2, N=200, fieldNames=['x', 'dx/dt'], auxFieldNames=['theta', 'abs z'])
+		Equation.__init__(self, 'Duffing', initParams, dim=1, n_fields=2, N=200, fieldNames=['x', 'dx/dt'], auxFieldNames=['theta', 'abs z'], initRange=initRange)
+
+	def initAuxFields(self):
+		abszs = np.zeros((SOLVE_EVERY_TI, self.getN()))
+		for k in range(SOLVE_EVERY_TI):
+			theta, absz = self.getAuxFields(*self.getFields(k))
+			abszs[k, :] = absz
+		self.abszs = np.abs(hilbert(abszs, axis=0))
 
 	def rhs(self, t, X, dXdt):
 		v = self.getCurrentParams()
@@ -48,12 +65,17 @@ class Duffing(Equation):
 
 	def getAuxFields(self, X, dXdt):
 		theta = np.arctan2(dXdt, X)
+		#
+		#try:
+		#	absz = self.abszs[self.k_sol-1]
+		#except AttributeError:
 		absz = self.kuramoto_local_order_param(theta)
-
 		return theta, absz
-
 
 	def setInitialConditionIncoherent(self):
 		X = 0.3 * np.random.normal(size=self.Ni)
 		dXdt = np.zeros(self.Ni)
 		self.setInitialCondition((X, dXdt))
+
+	def getMarkers(self, X, dXdt, theta, absz):
+		pass

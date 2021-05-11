@@ -3,7 +3,7 @@ from matplotlib import animation
 # import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 from threadpoolctl import threadpool_limits
-from tkinter import StringVar
+from tkinter import StringVar, DoubleVar
 import os
 
 from solvers import INTEGRATION_METHODS
@@ -19,19 +19,24 @@ class Parameter:
         self.name = name
         self.var = var
         self.val = float(var.get())
+        self.doublevar = DoubleVar(value=self.val)
 
     def getVal(self):
         try:
             val = float(self.var.get())
             if val == 0 and cantBeZero(self.name):
-                return self.val
-            self.val = val
-            return self.val
+                return self.doublevar.get()
+            self.doublevar.set(val)
+            return val
         except ValueError:
-            return self.val
+            return self.doublevar.get()
+
+    def udv(self, *args):
+        self.setVal(self.doublevar.get())
 
     def setVal(self, value):
         self.var.set(value)
+        self.doublevar.set(value)
 
 def cantBeZero(name):
     if name == 'dt' or name == 'dx':
@@ -39,7 +44,7 @@ def cantBeZero(name):
     return False
 
 class Equation:
-    def __init__(self, name, initParams, dim=1, N=200, isComplex=False, n_fields=1, fieldNames=['u'], auxFieldNames=[]):
+    def __init__(self, name, initParams, dim=1, N=200, isComplex=False, n_fields=1, fieldNames=['u'], auxFieldNames=[], markerNames=[], initRange=None):
         self.name = name
         self.dim = dim
         self.initParams = initParams
@@ -47,6 +52,10 @@ class Equation:
         self.parameters = self.createParamsDict(self.initParams)
         self.isComplex = isComplex
         self.fieldNames = fieldNames
+        self.initRange = initRange
+
+        if self.initRange is not None:
+            self.initRange['noise'] = (0, 1)
   
         self.auxFieldNames = auxFieldNames
         self.last_update = -1
@@ -65,10 +74,16 @@ class Equation:
         # each field will have N points
         self.setNi(N)
 
+    def init_eq(self):
+        return
+
     def init_tick(self):
         self.k_sol = 0
         self.t0 = 0
         self.last_params = self.getCurrentParams()
+
+    def initAuxFields(self):
+        return
 
     def tick(self, newInitCondFields=None, force_solve=False): #  make 1 time step
         new_params = self.getCurrentParams()
@@ -95,6 +110,9 @@ class Equation:
     def getAuxFields(self, *args):
         return []
 
+    def getMarkers(self, *args):
+        return []
+
     def getCurrentFields(self): # return Fields at k = k_sol
         if self.last_update == -1 or self.last_update != self.k_sol:
             return self.getFields(self.k_sol)
@@ -118,6 +136,7 @@ class Equation:
         self.solve()
         self.initCond = self.sol[:, -1]
         self.k_sol = 1
+        self.initAuxFields()
 
     def setNi(self, Ni):
         self.Ni = Ni
