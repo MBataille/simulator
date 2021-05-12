@@ -285,6 +285,7 @@ class Equation:
             pvals = data['pvals'][2:]
             pnames = data['pnames'][2:]
         else:
+            self.t0 = 0
             pvals  = data['pvals'][1:]
             pnames = data['pnames'][1:]
         self.initParams = self.arraytoInitParams(pnames, pvals)

@@ -79,5 +79,13 @@ class Duffing(Equation):
 		dXdt = np.zeros(self.Ni)
 		self.setInitialCondition((X, dXdt))
 
+	def setInitialConditionGaussian(self):
+		dXdt = np.zeros(self.Ni)
+		x = self.getX()
+		A = 4
+		sigma = 10
+		X = A * np.exp(-x**2/(2*sigma**2))
+		self.setInitialCondition((X, dXdt))
+
 	def getMarkers(self, X, dXdt, theta, absz):
 		pass
