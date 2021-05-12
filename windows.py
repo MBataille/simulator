@@ -1272,7 +1272,7 @@ class MainPage(tk.Frame):
 
         self.isEditing = False
         self.isPaused = False
-        self.t = 0 # same sis
+        self.t = eq.t0
 
         self.parentNewWindows = []
         self.newWindows = []
