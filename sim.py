@@ -18,7 +18,7 @@ from windows import StartPage, MainPage
 
 from equations.allequations import ALL_EQUATIONS
 
-VERSION = '0.12'
+VERSION = '0.13'
 
 DATAFOLDER = 'data/'
 
@@ -30,8 +30,8 @@ class SimApp(tk.Tk):
 
 		## icon
 		# t.Tk.iconbitmap(self, default='clienticon.ico')
-		tk.Tk.wm_title(self, 'Simulator v' + VERSION)
-		self.geometry('512x768')
+		tk.Tk.wm_title(self, 'IDEAS v' + VERSION)
+		self.geometry('564x768')
 		if ttk_themes:
 			self.style = ThemedStyle(self)
 			self.style.set_theme('breeze')

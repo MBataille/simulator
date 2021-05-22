@@ -69,7 +69,7 @@ class StartPage(tk.Frame):
     def __init__(self, parent, controller):
 
         tk.Frame.__init__(self, parent)
-        label = ttk.Label(self, text='Interactive simulation interface', font=LARGE_FONT)
+        label = ttk.Label(self, text='Interactive Differential Equations Analysis Simulator', font=LARGE_FONT)
         label.grid(row=0, column=0, columnspan=2,  padx=10, pady=5)
 
         self.parent = parent
@@ -1121,7 +1121,7 @@ class MainPage(tk.Frame):
 
         initcond_container = tk.Frame(self)
 
-        label = ttk.Label(self, text='Interactive PDE simulation', font=LARGE_FONT)
+        label = ttk.Label(self, text='Interactive Differential Equations Analysis Simulator', font=LARGE_FONT)
         label.grid(row=0, column=1)
 
         iclabel = ttk.Label(initcond_container, text='Current initial condition: ', font=MED_FONT)
