@@ -945,7 +945,7 @@ class SpatioTemporalPlot():
             self.im.set_clim(_min, _max)
         elif limtype == 'y':
             if _max > self.st_rows:
-                new_rows = int(_max) - ST_ROWS
+                new_rows = int(_max) - self.st_rows
                 self.imvals = np.append(self.imvals, np.zeros((new_rows, self.eq.getN())), axis=0)
                 self.st_rows += new_rows
                 self.replot()

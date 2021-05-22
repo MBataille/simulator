@@ -56,9 +56,12 @@ class Duffing(Equation):
 		R = int(np.sqrt(N)/4)
 		for i in range(N):
 			thetas = theta[i-R:i+R]
-			if self.boundary_condition == 'neumann':
+			if self.boundary_condition == 'periodic':
 				if i < R:
 					thetas = np.append(theta[N-1+i-R:],theta[:i+R]) 
+			if self.boundary_condition == 'neumann':
+				if i < R:
+					thetas = theta[:i+R] 
 			if len(thetas) == 0: print(i, R)
 			absz[i] = np.abs(np.exp(1j * thetas).sum())/(len(thetas))
 		return absz
@@ -83,7 +86,7 @@ class Duffing(Equation):
 		dXdt = np.zeros(self.Ni)
 		x = self.getX()
 		A = 4
-		sigma = 10
+		sigma = 15
 		X = A * np.exp(-x**2/(2*sigma**2))
 		self.setInitialCondition((X, dXdt))
 
