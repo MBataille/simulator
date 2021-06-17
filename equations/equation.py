@@ -58,15 +58,9 @@ class Equation:
             self.initRange['noise'] = (0, 1)
   
         self.auxFieldNames = auxFieldNames
-        self.last_update = -1
         # init tick // Perhaps this should go outside?
-        self.recording = False
+        self.init_eq()
         self.init_tick()
-
-        self.boundary_condition = 'neumann'
-
-        # initialize w/ some solver
-        self.solver = INTEGRATION_METHODS[0]
 
         self.n_fields = n_fields
         self.n_aux_fields = len(auxFieldNames)
@@ -75,7 +69,12 @@ class Equation:
         self.setNi(N)
 
     def init_eq(self):
-        return
+        self.last_update = -1
+        self.k_sol = 0
+        self.recording = False
+        self.boundary_condition = 'neumann'
+        self.solver = INTEGRATION_METHODS[0]
+        self.last_params = self.getCurrentParams()
 
     def init_tick(self):
         self.k_sol = 0
@@ -83,7 +82,6 @@ class Equation:
         self.last_params = self.getCurrentParams()
 
     def initAuxFields(self):
-        print('hi sis')
         return
 
     def tick(self, newInitCondFields=None, force_solve=False): #  make 1 time step
@@ -91,14 +89,20 @@ class Equation:
         if self.k_sol % SOLVE_EVERY_TI == 0 or new_params != self.last_params or newInitCondFields is not None or force_solve:
             # just in case
             self.updateX()
+            k = -1
             if newInitCondFields is not None:
                 self.setInitCondFields(newInitCondFields)
-            self.solve_cycle()
+                k = self.k_sol - 1
+            if new_params != self.last_params:
+                self.initCond = self.sol[:, self.k_sol-1]
+                k = self.k_sol -1
+            self.solve_cycle(k=k)
         else:
             self.k_sol += 1
         
         self.currentFields = self.getFields(self.k_sol-1)
         self.currentAuxFields = self.getAuxFields(*self.currentFields)
+        self.currentMarkers = self.getMarkers(*self.currentFields, *self.currentAuxFields)
         self.last_update = self.k_sol
         if self.recording:
             self.saveRecord()
@@ -110,6 +114,13 @@ class Equation:
 
     def getAuxFields(self, *args):
         return []
+
+    def getCurrentMarkers(self):
+        if self.last_update == -1 or self.last_update != self.k_sol:
+            fields = self.getCurrentFields()
+            auxfields = self.getCurrentAuxFields()
+            return self.getMarkers(*fields, *auxfields)
+        return self.currentMarkers
 
     def getMarkers(self, *args):
         return []
@@ -133,11 +144,24 @@ class Equation:
             return self.getCurrentAuxFields()[i - self.n_fields]
         return None
 
-    def solve_cycle(self):
+    def getFieldOverTime(self, i, n=None):
+        if i < self.n_fields:
+            if n is None:
+                return self.sol[i*self.Ni:(i+1)*self.Ni, :] 
+            elif n < self.Ni:
+                return self.sol[i*self.Ni + n:i*self.Ni + n+1, :]
+
+    def solve_cycle(self, k=-1):
+        if k >= 0:
+            self.t0 = self.getTimeAtK(k)
         self.solve()
         self.initCond = self.sol[:, -1]
         self.k_sol = 1
         self.initAuxFields()
+
+    def getTimeAtK(self, k):
+        kt = self.sol.shape[1]
+        return self.t0 - (kt - k - 1) * self.getParam('dt')
 
     def setNi(self, Ni):
         self.Ni = Ni
@@ -177,9 +201,11 @@ class Equation:
 
     def setInitialConditionZero(self):
         dtype = 'complex128' if self.isComplex else 'float64'
-        if self.dim == 1:
+        if self.dim == 0:
+            self.initCond = np.zeros(self.n_fields)
+        elif self.dim == 1:
             self.initCond = np.zeros(self.N, dtype=dtype)
-        if self.dim == 2:
+        elif self.dim == 2:
             self.initCond = np.zeros((self.N, self.N), dtype=dtype)
 
     def solve(self, t=None):
@@ -189,9 +215,11 @@ class Equation:
         dt = self.getParam('dt')
         if t is None:
             t = self.t0 + np.linspace(0, SOLVE_EVERY_TI*dt, SOLVE_EVERY_TI + 1) # change this
+        else:
+            t += self.t0
         # print(t, dt, self.initCond)
         with threadpool_limits(limits=1):
-            if self.dim == 1:
+            if self.dim == 1 or self.dim == 0:
                 self.sol = self.solver.solve(self.wrhs, (t[0], t[-1]), self.initCond, t)
             elif self.dim == 2:
                 self.sol = self.solver.solve(self.wrhs, (t[0], t[-1]), self.initCond.reshape(self.N * self.N), t)
@@ -215,6 +243,7 @@ class Equation:
         
 
     def updateX(self):
+        if self.dim == 0: return
         dx = self.parameters['dx'].getVal()
         Ni = round(self.N / self.n_fields)
         X = (Ni-1)*dx/2
@@ -261,10 +290,11 @@ class Equation:
         self.k_recording = None
         self.path_recording = None
         self.recording = False
-    def saveState(self, k, filename):
-        folder = self.getDataFolder()
+    def saveState(self, k, filename, folder=None):
+        if folder is None:
+            folder = self.getDataFolder()
         _vals = self.sol[:, k]
-        _pnames, _pvals = self.paramsToArray()
+        _pnames, _pvals = self.paramsToArray(k=k)
 
         np.savez_compressed(folder + filename + '.npz', vals=_vals, pnames=_pnames, pvals=_pvals)
 
@@ -291,6 +321,7 @@ class Equation:
         self.initParams = self.arraytoInitParams(pnames, pvals)
         self.initParams['noise'] = 0
         self.parameters = self.createParamsDict(self.initParams)
+        self.init_eq()
 
     def arraytoInitParams(self, pnames, pvals):
         initParams = {}
@@ -299,10 +330,11 @@ class Equation:
                 initParams[pnames[i]] = pvals[i]
         return initParams
 
-    def paramsToArray(self):
+    def paramsToArray(self, k=None):
         v = self.getCurrentParams()
         pnames = ['Ni', 't']
-        t = self.t0 + self.k_sol * self.getParam('dt')
+        if k is None: k = self.k_sol
+        t = self.getTimeAtK(k)
 
         pvals = [self.Ni, t]
         for p in v:
@@ -350,7 +382,11 @@ class Equation:
         
         return ['Zero'] + methods
 
+    def getDimFolder(self):
+        return f'{self.dim}D/'
+
     def getDataFolder(self):
+        if self.dim == 0: return DATAFOLDER + f'{self.dim}D/' + self.name + '/'
         return DATAFOLDER + self.name + '/'
 
     def getSavedStatesNames(self):
@@ -359,7 +395,9 @@ class Equation:
         folder = self.getDataFolder()
         _, foldernames, filenames = next(os.walk(folder))
 
-        return [fname.replace('.npz', '') for fname in filenames] + foldernames
+        names = [fname.replace('.npz', '') for fname in filenames] + foldernames
+        names.sort()
+        return names
 
     def get_xlims(self):
         """ Returns min and max of the x axis.

@@ -1,6 +1,8 @@
 from .equation import Equation, Parameter, SOLVE_EVERY_TI
 from scipy.signal import hilbert
 import numpy as np
+from scipy.integrate import simps
+import matplotlib.pyplot as plt
 
 class Duffing(Equation):
 
@@ -26,8 +28,10 @@ class Duffing(Equation):
 		Equation.__init__(self, 'Duffing', initParams, dim=1, n_fields=2, N=200, fieldNames=['x', 'dx/dt'], auxFieldNames=['theta', 'abs z'], initRange=initRange)
 
 	def initAuxFields(self):
-		abszs = np.zeros((SOLVE_EVERY_TI, self.getN()))
-		for k in range(SOLVE_EVERY_TI):
+		T = self.sol.shape[1]
+		abszs = np.zeros((T, self.getN()))
+		self.abszs = np.zeros((T, self.getN()))
+		for k in range(T):
 			theta, absz = self.getAuxFields(*self.getFields(k), calc_kura=True)
 			abszs[k, :] = absz
 		self.abszs = np.abs(hilbert(abszs, axis=0))
@@ -66,13 +70,15 @@ class Duffing(Equation):
 			absz[i] = np.abs(np.exp(1j * thetas).sum())/(len(thetas))
 		return absz
 
-	def getAuxFields(self, X, dXdt, calc_kura=False):
+	def getAuxFields(self, X, dXdt, calc_kura=False, k_sol=None):
 		theta = np.arctan2(dXdt, X)
 		if calc_kura:
 			absz = self.kuramoto_local_order_param(theta)
 		else:
 			try:
-				absz = self.abszs[self.k_sol-1]
+				if k_sol is None:
+					k_sol = self.k_sol-1
+				absz = self.abszs[k_sol]
 			except AttributeError:
 				absz = self.kuramoto_local_order_param(theta)
 		return theta, absz
@@ -91,4 +97,11 @@ class Duffing(Equation):
 		self.setInitialCondition((X, dXdt))
 
 	def getMarkers(self, X, dXdt, theta, absz):
-		pass
+		f = (1 - absz)**2
+		x = self.getX()
+		centroid = simps(f*x, x=x)/simps(f, x=x)
+		y_interface = (absz.max() + absz.min())/2
+		inds = np.argwhere(absz < y_interface)
+		left_interface, right_interface = x[inds[0]], x[inds[-1]]
+		# left_interface = x[np.argwhere(absz < 0.9)[0]]
+		return [centroid, left_interface, right_interface]

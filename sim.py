@@ -1,3 +1,4 @@
+from tkinter.constants import ALL
 import numpy as np
 
 import os
@@ -18,7 +19,7 @@ from windows import StartPage, MainPage
 
 from equations.allequations import ALL_EQUATIONS
 
-VERSION = '0.13'
+VERSION = '0.15'
 
 DATAFOLDER = 'data/'
 
@@ -77,9 +78,14 @@ class SimApp(tk.Tk):
 		if not os.path.exists(DATAFOLDER):
 			os.mkdir(DATAFOLDER)
 
-		for eqname in ALL_EQUATIONS:
-			if not os.path.exists(DATAFOLDER + eqname):
-				os.mkdir(DATAFOLDER + eqname)
+		for dim in ALL_EQUATIONS:
+			DIMFOLDER = DATAFOLDER + f'{dim}D/'
+			if not os.path.exists(DIMFOLDER):
+				os.mkdir(DIMFOLDER)
+			for eqname in ALL_EQUATIONS[dim]:
+				path = DIMFOLDER if dim == 0 else DATAFOLDER
+				if not os.path.exists(path + eqname):
+					os.mkdir(path + eqname)
 
 	def getEqInitConds(self):
 		self.initConds =  self.eq.getInitialConditions(), self.eq.getSavedStatesNames()
@@ -117,11 +123,12 @@ class SimApp(tk.Tk):
 
 	def resetEqInitCond(self):
 		self.setEqInitCond(self.current_initcond_indx)
+		self.frames[MainPage].resetParameterWindow()
 		self.solve_cycle()
 
-	def setEq(self, name):
+	def setEq(self, name, dim=1):
 		### eq should be a string or sth
-		self.eq = ALL_EQUATIONS[name]()
+		self.eq = ALL_EQUATIONS[dim][name]()
 
 	def getBoundaryCondition(self):
 		return self.eq.getBoundaryCondition()
