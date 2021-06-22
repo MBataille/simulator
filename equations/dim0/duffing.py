@@ -2,7 +2,7 @@ from equations.equation import Equation, Parameter, SOLVE_EVERY_TI
 import numpy as np
 from scipy.integrate import simps
 
-class Duffing1D(Equation):
+class Duffing(Equation):
 
     def __init__(self):
         initParams = { 'dt' : 0.05,
