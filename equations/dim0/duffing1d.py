@@ -19,7 +19,7 @@ class Duffing1D(Equation):
                     'gamma' : (0, 5),
                     'omega' : (0, 1)}
 
-        Equation.__init__(self, 'Duffing1D', initParams, dim=0, n_fields=2, N=1, fieldNames=['x', 'dx/dt'], initRange=initRange)
+        Equation.__init__(self, 'Duffing', initParams, dim=0, n_fields=2, N=1, fieldNames=['x', 'dx/dt'], initRange=initRange)
 
     def rhs(self, t, X, dXdt):
         v = self.getCurrentParams()

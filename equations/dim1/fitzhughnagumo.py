@@ -1,5 +1,5 @@
 from tkinter import *
-from .equation import Equation, Parameter
+from equations.equation import Equation, Parameter
 import numpy as np
 
 class FitzHughNagumo(Equation):

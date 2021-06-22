@@ -1,4 +1,4 @@
-from .equation import Equation, Parameter, SOLVE_EVERY_TI
+from equations.equation import Equation, Parameter, SOLVE_EVERY_TI
 from scipy.signal import hilbert
 import numpy as np
 from scipy.integrate import simps
