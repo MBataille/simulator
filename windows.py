@@ -678,6 +678,8 @@ class InspectorTemporal(tk.Frame):
         self.set_xlim(*xlims)
         self.set_ylim(*ylims)
         self.tmaxvar.set(self.kmax_to_tmax(self.tplot.k_max))
+        self.last_unit = self.tplot.unit
+        self.unitvar.set(self.last_unit)
 
 
     def updateN(self):
@@ -687,9 +689,10 @@ class InspectorTemporal(tk.Frame):
         try:
             unit = int(self.unitvar.get())
         except ValueError:
-            return None
-        if unit >= self.parent.controller.eq.getN(): 
-            return None
+            return self.last_unit
+        if unit >= self.parent.controller.eq.getN():
+            return self.last_unit
+        self.last_unit = unit
         return unit
 
     def get_kmax(self):
@@ -887,8 +890,15 @@ class InspectorPhase(tk.Frame):
         self.set_xlim(*xlims)
         self.set_ylim(*ylims)
 
+    def update_xy_fields(self):
+        x_field = self.pplot.x_field
+        y_field = self.pplot.y_field
+        self.xfieldcbox.current(x_field)
+        self.yfieldcbox.current(y_field)
+
     def changePlot(self, pplot):
         self.initPhasePlot(pplot)
+        self.update_xy_fields()
 
     def change_solver(self, event):
         solver_index = self.combobox.current()
@@ -970,7 +980,7 @@ class InspectorWindow(tk.Frame):
         if self.controller.eq.dim == 1:
             self.showProfile()
         elif self.controller.eq.dim == 0:
-            self.showTemporal()
+            self.showPhase()
         self.grid(row=0, column=0)
 
     def showProfile(self):
@@ -1106,13 +1116,13 @@ class ParameterWindow:
 
 
 class ProfilePlot:
-    def __init__(self, fig, ax, profile_inspector, controller):
+    def __init__(self, fig, ax, mainpg):
         self.fig = fig
         self.ax = ax
-        self.profile_inspector = profile_inspector
-        self.controller = controller
-        self.mainpg = self.controller.frames[MainPage] # change this later
-        self.eq = controller.eq
+        self.mainpg = mainpg
+        self.profile_inspector = self.mainpg.inspector.profile
+        self.controller = self.mainpg.controller
+        self.eq = self.controller.eq
         self.kind = PROFILE
         self.clicked = False
 
@@ -1324,12 +1334,13 @@ class ProfilePlot:
 
 class SpatioTemporalPlot:
 
-    def __init__(self, fig, ax, spatiotemp_inspector, controller):
+    def __init__(self, fig, ax, mainpg):
         self.fig = fig
         self.ax = ax
-        self.spatiotemp_inspector = spatiotemp_inspector
-        self.controller = controller
-        self.eq = controller.eq
+        self.mainpg = mainpg
+        self.spatiotemp_inspector = mainpg.inspector.spatiotemp
+        self.controller = mainpg.controller
+        self.eq = self.controller.eq
         self.k_st = 0 # k spatiotemp
         self.st_rows = ST_ROWS
         self.kind = SPATIOTEMPORAL
@@ -1437,7 +1448,8 @@ class SpatioTemporalPlot:
             self.set_lim(limtype, _min, _max)
 
     def on_click(self, event):
-        pass
+        if event.inaxes == self.ax:
+            self.mainpg.setActivePlot(self)
 
     def off_click(self, event):
         pass
@@ -1463,12 +1475,12 @@ class SpatioTemporalPlot:
 
 class PlotWindow(tk.Frame):
 
-    def __init__(self, parent, controller, mainpg):
+    def __init__(self, parent, mainpg, kind):
         self.parent = parent
-        self.controller = controller
+        self.controller = mainpg.controller
         self.mainpg = mainpg
         self.inspector = mainpg.inspector
-
+        
         self.clicked = False
         self.released = False
         self.anim_stopped = False
@@ -1480,6 +1492,7 @@ class PlotWindow(tk.Frame):
         self.fig = Figure(figsize=(10, 10), dpi=100)
         self.ax = self.fig.add_subplot(111)
 
+        self.createPlot(kind)
         ## draw canvas
 
         self.container_mpl = tk.Frame(self)
@@ -1500,78 +1513,42 @@ class PlotWindow(tk.Frame):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
+    def createPlot(self, kind):
+        if kind == TEMPORALPLOT:
+            PlotType = TemporalPlot
+        elif kind == SPATIOTEMPORAL:
+            PlotType = SpatioTemporalPlot
+        elif kind == PHASEPLOT:
+            PlotType = PhasePlot
+        elif kind == PROFILE:
+            PlotType = ProfilePlot
+        self.plot = PlotType(self.fig, self.ax, self.mainpg)
+
     def start_anim(self):
         event_source = self.mainpg.ani.event_source
         self.ani = animation.FuncAnimation(self.fig, self.animate, frames=60, interval=100, blit=False, event_source=event_source)
 
     def on_click(self, event):
-        pass
+        self.plot.on_click(event)
 
     def off_click(self, event):
-        pass
+        self.plot.off_click(event)
 
     def move_click(self, event):
-        pass
+        self.plot.move_click(event)
 
     def animate(self, i):
-        pass
-
-class SpatiotemporalWindow(PlotWindow):
-
-    def __init__(self, parent, controller, mainpg, spatiotemporal_inspector):
-
-        self.spatiotemporal_inspector = spatiotemporal_inspector
-        PlotWindow.__init__(self, parent, controller, mainpg)
-
-        self.stplot = SpatioTemporalPlot(self.fig, self.ax, spatiotemporal_inspector, controller)
-        self.im  = self.stplot.im
-
-    def animate(self, i):
-        if self.isPaused or self.isEditing:
-            return self.im,
-        return self.stplot.update(),
-
-    def on_click(self, event):
-        if event.inaxes == self.ax:
-            self.controller.activePlot = (self.ax, SPATIOTEMPORAL, self.stplot)
-            self.inspector.showSpatiotemp()
-
-    def off_click(self, event):
-        pass
-
-    def move_click(self, event):
-        pass
-
-
-class ProfileWindow(PlotWindow):
-
-    def __init__(self, parent, controller, mainpg, profile_inspector):
-        self.profile_inspector = profile_inspector
-        PlotWindow.__init__(self, parent, controller, mainpg)
-        self.pplot = ProfilePlot(self.fig, self.ax, self.profile_inspector, self.controller)
-        self.lines = self.pplot.lines
-
-    def animate(self, i):
-        if self.isPaused or self.isEditing:
-            return self.lines, 
-        self.lines = self.pplot.update()
-        return self.lines,
-
-    def on_click(self, event):
-        self.pplot.on_click(event)
-
-    def off_click(self, event):
-        self.pplot.off_click(event)
-
-    def move_click(self, event):
-        self.pplot.move_click(event)
+        if self.mainpg.isPaused or self.mainpg.isEditing:
+            return self.plot.getAnimIterables()
+        self.plot.update()
+        return self.plot.getAnimIterables()
 
 class TemporalPlot:
-    def __init__(self, fig, ax, temp_inspector, controller, mainpg):
+    def __init__(self, fig, ax, mainpg):
         self.fig = fig
         self.ax = ax
-        self.temp_inspector = temp_inspector
-        self.controller = controller
+        self.temp_inspector = mainpg.inspector.temporal
+        self.controller = mainpg.controller
         self.mainpg = mainpg
         self.eq = self.controller.eq
 
@@ -1688,7 +1665,8 @@ class TemporalPlot:
         return self.lines
     
     def on_click(self, event):
-        pass
+        if event.inaxes == self.ax:
+            self.mainpg.setActivePlot(self)
 
     def move_click(self, event):
         pass
@@ -1700,13 +1678,13 @@ class TemporalPlot:
         return self.lines
 
 class PhasePlot:
-    def __init__(self, fig, ax, phase_inspector, controller, mainpg):
+    def __init__(self, fig, ax, mainpg):
         self.fig = fig
         self.ax = ax
-        self.phase_inspector = phase_inspector
-        self.controller = controller
         self.mainpg = mainpg
-        self.eq = controller.eq
+        self.phase_inspector = mainpg.inspector.phase
+        self.controller = mainpg.controller
+        self.eq = self.controller.eq
         self.clicked = False
 
         self.x_field = 0
@@ -1757,11 +1735,13 @@ class PhasePlot:
         self.user_line.set_ydata(self.ydata)
 
     def on_click(self, event):
-        if event.inaxes != self.ax or not self.mainpg.isEditing: return
-        self.xdata = [event.xdata]
-        self.ydata = [event.ydata]
-        self.draw_user_line()
-        self.clicked = True
+        if event.inaxes != self.ax: return
+        self.mainpg.setActivePlot(self)
+        if self.mainpg.isEditing:
+            self.xdata = [event.xdata]
+            self.ydata = [event.ydata]
+            self.draw_user_line()
+            self.clicked = True
 
     def move_click(self, event):
         if self.clicked and event.inaxes == self.ax:
@@ -1792,7 +1772,7 @@ class PhasePlot:
         Ni = len(self.xdata)
         self.eq.setNi(Ni)
         self.eq.tick(newInitCondFields=newInitCond)
-        self.resetXsandYs()
+        self.clear() # resets Xs and Ys
         self.phase_inspector.parent.temporal.updateN()
         self.k_pp = 0
 
@@ -1814,7 +1794,7 @@ class PhasePlot:
             self.lines[i].set_xdata(self.xs[i, :self.k_pp])
             self.lines[i].set_ydata(self.ys[i, :self.k_pp])
         unit = self.getSelectedUnit()
-
+        # print(unit, self.k_pp, self.xs.shape)
         self.pts[0].set_xdata([self.xs[unit, self.k_pp-1]])
         self.pts[0].set_ydata([self.ys[unit, self.k_pp-1]])
 
@@ -1852,6 +1832,8 @@ class PhasePlot:
     def update(self):
         Fields = self.eq.getCurrentFields()
         # print(len(Fields), len(Fields[0]), self.eq.getN())
+        if len(Fields[self.x_field]) != self.xs.shape[0]:
+            self.clear() # resets Xs and Ys
         self.xs[:, self.k_pp] = Fields[self.x_field]
         self.ys[:, self.k_pp] = Fields[self.y_field]
         self.k_pp = (self.k_pp + 1) % self.k_reset
@@ -1867,6 +1849,7 @@ class PhasePlot:
         return self.lines + self.pts
 
     def clear(self):
+        self.resetXsandYs()
         self.k_pp = 0
 
     def getAnimIterables(self):
@@ -2013,13 +1996,13 @@ class MainPage(tk.Frame):
         self.ax2 = self.fig.add_subplot(212) # STW
 
         if self.controller.eq.dim == 1:
-            self.plots = [ProfilePlot(self.fig, self.ax, self.inspector.profile, self.controller), \
-                SpatioTemporalPlot(self.fig, self.ax2, self.inspector.spatiotemp, self.controller)]
+            self.plots = [ProfilePlot(self.fig, self.ax, self), \
+                SpatioTemporalPlot(self.fig, self.ax2, self)]
             self.eqX = eq.x
 
         elif self.controller.eq.dim == 0:
-            self.plots = [PhasePlot(self.fig, self.ax, self.inspector.phase, self.controller, self), \
-                TemporalPlot(self.fig, self.ax2, self.inspector.temporal, self.controller, self)]
+            self.plots = [PhasePlot(self.fig, self.ax, self), \
+                TemporalPlot(self.fig, self.ax2, self)]
             self.inspector.phase.initPhasePlot(self.plots[0])
             self.inspector.temporal.initTemporalPlot(self.plots[1])
         self.Fields = eq.getInitCondFields()
@@ -2070,11 +2053,12 @@ class MainPage(tk.Frame):
     def add_window(self):
         parent_new_window = tk.Toplevel(self)
         parent_new_window.geometry('512x512')
+
         self.parentNewWindows.append(parent_new_window)
-        if self.controller.activePlot[1] == PROFILE:
-            pw = ProfileWindow(parent_new_window, self.controller, self, self.inspector.profile)
-        elif self.controller.activePlot[1] == SPATIOTEMPORAL:
-            pw = SpatiotemporalWindow(parent_new_window, self.controller, self, self.inspector.spatiotemp)
+
+        kind = self.controller.activePlot[1]
+        pw = PlotWindow(parent_new_window, self, kind)
+
         pw.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.newWindows.append(pw)
         pw.start_anim()
@@ -2155,7 +2139,6 @@ class MainPage(tk.Frame):
     def on_click(self, event):
         for plot in self.plots:
             if event.inaxes == plot.ax:
-                self.setActivePlot(plot)
                 plot.on_click(event)
 
     def setActivePlot(self, aplot):
