@@ -588,7 +588,7 @@ class InspectorTemporal(tk.Frame):
 
         self.parent = parent
 
-        self.titlelbl = ttk.Label(self, text='Inspector: Temporal Plot', font=LARGE_FONT)
+        self.titlelbl = ttk.Label(self, text='Inspector: Temporal Plot (Oscilloscope)', font=LARGE_FONT)
         self.titlelbl.grid(column=0, row=0, columnspan=3, padx=20, pady=10)
 
         self.y_minlbl = ttk.Label(self, text='y_min', font=MED_FONT)
