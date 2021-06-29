@@ -632,28 +632,20 @@ class InspectorTemporal(tk.Frame):
         self.autobtn = ttk.Button(self, textvariable=self.autotxt, command=self.set_auto)
         self.autobtn.grid(column=3, row=3, padx=10, pady=10)
 
-        self.tmaxlbl = ttk.Label(self, text='t max', font=MED_FONT)
-        self.tmaxlbl.grid(column=0, row=3, padx=10, pady=10)
-
-        self.tmaxvar = tk.StringVar(value=str(0))
-
-        self.tmaxval = ttk.Entry(self, textvariable=self.tmaxvar, font=MED_FONT, width=10)
-        self.tmaxval.grid(column=1, row=3) #, padx=10, pady=10)
-
-        self.Nvar = tk.StringVar(value='N = ' +str(self.parent.controller.eq.getN()))
+        self.Nvar = tk.StringVar(value=f'Show unit: (N = {str(self.parent.controller.eq.getN())})')
         self.Nval = ttk.Label(self, textvariable=self.Nvar)
 
-        self.Nval.grid(row=4, column=0, padx=10, pady=10)
+        self.Nval.grid(row=3, column=0, padx=10, pady=10)
 
-        self.unitlbl = ttk.Label(self, text='Show unit: ', font=MED_FONT)
-        self.unitlbl.grid(row=4, column=2, padx=10, pady=10)
+#        self.unitlbl = ttk.Label(self, text='Show unit: ', font=MED_FONT)
+#        self.unitlbl.grid(row=4, column=2, padx=10, pady=10)
 
         self.unitvar = StringVar(value='0')
         self.unitentry = ttk.Entry(self, textvariable=self.unitvar, font=MED_FONT, width=10)
-        self.unitentry.grid(row=4, column=3, padx=10, pady=10)
+        self.unitentry.grid(row=3, column=1, padx=10, pady=10)
 
         self.choosefieldbl = ttk.Label(self, text='Show field: ', font=MED_FONT)
-        self.choosefieldbl.grid(column=0, row=5, padx=10, pady=10)
+        self.choosefieldbl.grid(column=0, row=4, padx=10, pady=10)
 
         self.active_field_indx = 0
 
@@ -661,29 +653,28 @@ class InspectorTemporal(tk.Frame):
         self.choosefieldcbox['values'] = self.parent.controller.eq.fieldNames
         self.choosefieldcbox.bind('<<ComboboxSelected>>', self.change_field)
         self.choosefieldcbox.current(0)
-        self.choosefieldcbox.grid(column=1, row=5)
+        self.choosefieldcbox.grid(column=1, row=4)
 
         self.choosecolorlbl = ttk.Label(self, text='Color: ', font=MED_FONT)
-        self.choosecolorlbl.grid(column=2, row=5)
+        self.choosecolorlbl.grid(column=2, row=4)
 
         self.choosecolorbox = ttk.Combobox(self, state='readonly', width=10)
         self.choosecolorbox['values'] = COLORS
         self.choosecolorbox.bind('<<ComboboxSelected>>', self.change_color)
         self.choosecolorbox.current(2)
-        self.choosecolorbox.grid(column=3, row=5)
+        self.choosecolorbox.grid(column=3, row=4)
 
     def initTemporalPlot(self, tplot):
         self.tplot = tplot
         xlims, ylims = self.tplot.get_ax_lims()
         self.set_xlim(*xlims)
         self.set_ylim(*ylims)
-        self.tmaxvar.set(self.kmax_to_tmax(self.tplot.k_max))
         self.last_unit = self.tplot.unit
         self.unitvar.set(self.last_unit)
 
 
     def updateN(self):
-        self.Nvar.set('N = ' + str(self.parent.controller.eq.getN()))
+        self.Nvar.set(f'Show unit: (N = {str(self.parent.controller.eq.getN())})')
 
     def getUnit(self):
         try:
