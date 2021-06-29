@@ -1811,7 +1811,7 @@ class PhasePlot:
 
     def manual_update_lim(self):
         if self.isInspectorActive():
-            self.set_lims(self.temp_inspector.get_xlims(), self.temp_inspector.get_ylims())
+            self.set_lims(self.phase_inspector.get_xlims(), self.phase_inspector.get_ylims())
    
     def auto_update_lim(self):
         if len(self.xs) == 0: return
