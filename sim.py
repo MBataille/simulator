@@ -19,7 +19,7 @@ from windows import StartPage, MainPage
 
 from equations.allequations import ALL_EQUATIONS
 
-VERSION = '0.16'
+VERSION = '0.17'
 
 DATAFOLDER = 'data/'
 

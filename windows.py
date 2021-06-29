@@ -591,11 +591,11 @@ class InspectorTemporal(tk.Frame):
         self.titlelbl = ttk.Label(self, text='Inspector: Temporal Plot (Oscilloscope)', font=LARGE_FONT)
         self.titlelbl.grid(column=0, row=0, columnspan=3, padx=20, pady=10)
 
-        self.y_minlbl = ttk.Label(self, text='y_min', font=MED_FONT)
-        self.y_maxlbl = ttk.Label(self, text='y_max', font=MED_FONT)
+        self.y_minlbl = ttk.Label(self, text='u_min', font=MED_FONT)
+        self.y_maxlbl = ttk.Label(self, text='u_max', font=MED_FONT)
 
-        self.y_minlbl.grid(column=0, row=2)
-        self.y_maxlbl.grid(column=0, row=1)
+        self.y_minlbl.grid(column=2, row=2)
+        self.y_maxlbl.grid(column=2, row=1)
 
         y_min, y_max = -1, 1
 
@@ -606,14 +606,14 @@ class InspectorTemporal(tk.Frame):
         self.y_minval = ttk.Entry(self, textvariable=self.y_minvar, font=MED_FONT, width=15)
         self.y_maxval = ttk.Entry(self, textvariable=self.y_maxvar, font=MED_FONT, width=15)
 
-        self.y_minval.grid(column=1, row=2, padx=10)
-        self.y_maxval.grid(column=1, row=1, padx=10)
+        self.y_minval.grid(column=3, row=2, padx=10)
+        self.y_maxval.grid(column=3, row=1, padx=10)
 
-        self.x_minlbl = ttk.Label(self, text='x_min', font=MED_FONT)
-        self.x_maxlbl = ttk.Label(self, text='x_max', font=MED_FONT)
+        self.x_minlbl = ttk.Label(self, text='t_min', font=MED_FONT)
+        self.x_maxlbl = ttk.Label(self, text='t_max', font=MED_FONT)
 
-        self.x_minlbl.grid(column=2, row=2)
-        self.x_maxlbl.grid(column=2, row=1)
+        self.x_minlbl.grid(column=0, row=2)
+        self.x_maxlbl.grid(column=0, row=1)
 
         x_min, x_max = -1, 1
 
@@ -624,8 +624,8 @@ class InspectorTemporal(tk.Frame):
         self.x_minval = ttk.Entry(self, textvariable=self.x_minvar, font=MED_FONT, width=15)
         self.x_maxval = ttk.Entry(self, textvariable=self.x_maxvar, font=MED_FONT, width=15)
 
-        self.x_minval.grid(column=3, row=2, padx=10)
-        self.x_maxval.grid(column=3, row=1, padx=10)
+        self.x_minval.grid(column=1, row=2, padx=10)
+        self.x_maxval.grid(column=1, row=1, padx=10)
 
         self.autotxt = tk.StringVar()
         self.autotxt.set('Auto')
@@ -697,7 +697,7 @@ class InspectorTemporal(tk.Frame):
 
     def get_kmax(self):
         try:
-            tmax = float(self.tmaxvar.get())
+            tmax = float(self.x_maxvar.get())
             return self.tmax_to_kmax(tmax)
         except ValueError:
             return None
@@ -740,16 +740,16 @@ class InspectorTemporal(tk.Frame):
     
     def get_xlims(self):
         try:
-            y_min = float(self.y_minvar.get())
-            y_max = float(self.y_maxvar.get())
+            y_min = float(self.x_minvar.get())
+            y_max = float(self.x_maxvar.get())
             return y_min, y_max
         except ValueError:
             return None, None
 
     def get_ylims(self):
         try:
-            x_min = float(self.x_minvar.get())
-            x_max = float(self.x_maxvar.get())
+            x_min = float(self.y_minvar.get())
+            x_max = float(self.y_maxvar.get())
             return x_min, x_max
         except ValueError:
             return None, None
@@ -1607,7 +1607,7 @@ class TemporalPlot:
             self.lines[i].set_ydata(self.ys[i, :k_sol])
 
     def auto_update_lim(self):
-        xmin, xmax = d10p(self.ts[0]), i10p(self.ts[-1])
+        xmin, xmax = self.ts[0], self.ts[-1]
         ymin, ymax = d10p(self.ys.min()), i10p(self.ys.max())
         self.set_lims((xmin, xmax), (ymin, ymax))
 
@@ -1634,6 +1634,7 @@ class TemporalPlot:
 
     def manual_update_lim(self):
         if self.isInspectorActive():
+            self.update_kmax(self.temp_inspector.get_kmax())
             self.set_lims(self.temp_inspector.get_xlims(), self.temp_inspector.get_ylims())
 
     def changeUnit(self, new_unit):
@@ -1643,7 +1644,6 @@ class TemporalPlot:
 
     def update(self):
         self.updateT()
-        self.update_kmax(self.temp_inspector.get_kmax())
         self.changeUnit(self.temp_inspector.getUnit())        
         Fields = self.eq.getCurrentFields()
         if self.k_tp == 0:
