@@ -772,8 +772,8 @@ class InspectorPhase(tk.Frame):
         self.y_minlbl = ttk.Label(self, text='y_min', font=MED_FONT)
         self.y_maxlbl = ttk.Label(self, text='y_max', font=MED_FONT)
 
-        self.y_minlbl.grid(column=0, row=2)
-        self.y_maxlbl.grid(column=0, row=1)
+        self.y_minlbl.grid(column=2, row=2)
+        self.y_maxlbl.grid(column=2, row=1)
 
         y_min, y_max = -1, 1
 
@@ -784,14 +784,14 @@ class InspectorPhase(tk.Frame):
         self.y_minval = ttk.Entry(self, textvariable=self.y_minvar, font=MED_FONT, width=15)
         self.y_maxval = ttk.Entry(self, textvariable=self.y_maxvar, font=MED_FONT, width=15)
 
-        self.y_minval.grid(column=1, row=2, padx=10)
-        self.y_maxval.grid(column=1, row=1, padx=10)
+        self.y_minval.grid(column=3, row=2, padx=10)
+        self.y_maxval.grid(column=3, row=1, padx=10)
 
         self.x_minlbl = ttk.Label(self, text='x_min', font=MED_FONT)
         self.x_maxlbl = ttk.Label(self, text='x_max', font=MED_FONT)
 
-        self.x_minlbl.grid(column=2, row=2)
-        self.x_maxlbl.grid(column=2, row=1)
+        self.x_minlbl.grid(column=0, row=2)
+        self.x_maxlbl.grid(column=0, row=1)
 
         x_min, x_max = -1, 1
 
@@ -802,8 +802,8 @@ class InspectorPhase(tk.Frame):
         self.x_minval = ttk.Entry(self, textvariable=self.x_minvar, font=MED_FONT, width=15)
         self.x_maxval = ttk.Entry(self, textvariable=self.x_maxvar, font=MED_FONT, width=15)
 
-        self.x_minval.grid(column=3, row=2, padx=10)
-        self.x_maxval.grid(column=3, row=1, padx=10)
+        self.x_minval.grid(column=1, row=2, padx=10)
+        self.x_maxval.grid(column=1, row=1, padx=10)
 
         self.autotxt = tk.StringVar()
         self.autotxt.set('Auto')
@@ -915,7 +915,7 @@ class InspectorPhase(tk.Frame):
             self.pplot.auto_lim = True
             self.autotxt.set('Auto')
     
-    def get_xlims(self):
+    def get_ylims(self):
         try:
             y_min = float(self.y_minvar.get())
             y_max = float(self.y_maxvar.get())
@@ -923,7 +923,7 @@ class InspectorPhase(tk.Frame):
         except ValueError:
             return None, None
 
-    def get_ylims(self):
+    def get_xlims(self):
         try:
             x_min = float(self.x_minvar.get())
             x_max = float(self.x_maxvar.get())
@@ -1580,8 +1580,10 @@ class TemporalPlot:
         k_sol = self.k_tp
         for i in range(self.ys.shape[0]):
             color = COLORS[self.current_colors[i]]
-            if color == 'none': continue
-            line, = self.ax.plot(self.ts[:k_sol], self.ys[i, :k_sol], color='tab:' + color)
+            if color == 'none': 
+                line = None
+            else:
+                line, = self.ax.plot(self.ts[:k_sol], self.ys[i, :k_sol], color='tab:' + color)
             self.lines.append(line)
 
     def getColorField(self, i):
@@ -1594,8 +1596,9 @@ class TemporalPlot:
     def update_fields(self):
         k_sol = self.k_tp
         for i in range(self.ys.shape[0]):
-            self.lines[i].set_xdata(self.ts[:k_sol])
-            self.lines[i].set_ydata(self.ys[i, :k_sol])
+            if self.lines[i] is not None:
+                self.lines[i].set_xdata(self.ts[:k_sol])
+                self.lines[i].set_ydata(self.ys[i, :k_sol])
 
     def auto_update_lim(self):
         xmin, xmax = self.ts[0], self.ts[-1]
