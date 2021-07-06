@@ -89,8 +89,12 @@ class StartPage(tk.Frame):
         self.dim_listbox.selection_set(0)
         self.dim_listbox.grid(row=2, column=0)
 
+        self.n_var = tk.StringVar(value='200')
+        self.n_ent = tk.Entry(self, textvariable=self.n_var)
+        self.n_ent.grid(row=3, column=1, padx=5, pady=5, sticky='w')
+
         self.eq_listbox = tk.Listbox(self)
-        self.fill_eq_listbox(0)
+        self.fill_eq_listbox(0, init=True)
 
         self.dim_lbl = ttk.Label(self, text='Choose dimension', font=MED_FONT)
         self.eq_lbl = ttk.Label(self, text='Choose equation', font=MED_FONT)
@@ -111,10 +115,6 @@ class StartPage(tk.Frame):
 
         self.n_lbl = ttk.Label(self, text='Number of pts =  ', font=MED_FONT)
         self.n_lbl.grid(row=3, column=0, padx=5, pady=5, sticky='e')
-
-        self.n_var = tk.StringVar(value='200')
-        self.n_ent = tk.Entry(self, textvariable=self.n_var)
-        self.n_ent.grid(row=3, column=1, padx=5, pady=5, sticky='w')
 
         self.statustext = tk.StringVar()
         self.statuslbl = ttk.Label(self, textvariable=self.statustext)
@@ -137,6 +137,12 @@ class StartPage(tk.Frame):
     def deactivate(self):
         pass
 
+    def init_eq(self):
+        name = self.eq_listbox.get(0)
+        self.controller.setEq(name, dim=0)
+        print(name)
+        self.fill_initcond_listbox()
+
     def clear_listbox(self, lbox):
         last = lbox.size() - 1
         if last >= 0:
@@ -149,20 +155,24 @@ class StartPage(tk.Frame):
             self.initcond_listbox.insert(tk.END, initcond)
         self.initcond_listbox.selection_set(0)
 
-    def fill_eq_listbox(self, dim):
+    def fill_eq_listbox(self, dim, init=False):
         self.clear_listbox(self.eq_listbox)
         eqs = list(ALL_EQUATIONS[dim])
         eqs.sort()
         for eqname in eqs:
             self.eq_listbox.insert(tk.END, eqname)
         self.eq_listbox.selection_set(0)
+        if init:
+            self.controller.setEq(eqs[0], dim=dim)
+            self.n_var.set(self.controller.eq.getN())
 
     def change_select_dim(self, event):
         selection = event.widget.curselection()
         if selection:
             index = selection[0]
             self.dim = int(event.widget.get(index)[-1])
-            self.fill_eq_listbox(self.dim)
+            self.fill_eq_listbox(self.dim, init=True)
+            self.fill_initcond_listbox()
 
 
     def change_select_eq(self, event):
@@ -1030,35 +1040,72 @@ class EntryWindow:
         self.mainpg = mainpg
         self.record = record
 
-        self.txtlbl = ttk.Label(self.root, text='Insert name', font=MED_FONT)
-        self.entry = ttk.Entry(self.root)
+        self.txtlbl = ttk.Label(self.root, text='Enter name', font=MED_FONT)
+        self.entry = ttk.Entry(self.root, width=15)
         self.entry.bind('<Return>', self.save)
         self.savebtn = ttk.Button(self.root, text='save', command=self.save)
+        
+        add_row = 0
+        if record:
+            add_row += 1
+            self.interval_lbl = ttk.Label(self.root, text='Save every X time steps')
+
+            self.interval_val = tk.StringVar(value='1')
+            self.interval_entry = ttk.Entry(self.root, textvariable=self.interval_val, width=15)
+            self.interval_lbl.grid(row=1, column=0)
+            self.interval_entry.grid(row=1, column=1)
 
         self.statustext = tk.StringVar()
         self.status = ttk.Label(self.root, textvariable=self.statustext, font=MED_FONT)
 
+        self.savefig_val = tk.BooleanVar()
+        self.savefig_checkbox = ttk.Checkbutton(self.root, text='Save figure?',
+                                    variable=self.savefig_val)
+        self.savefig_checkbox.grid(row=1+add_row, column=1, columnspan=1)
+
+        self.savestate_val = tk.BooleanVar(value=True)
+        self.savestate_checkbox = ttk.Checkbutton(self.root, text='Save State?',
+                                    variable=self.savestate_val)
+        self.savestate_checkbox.grid(row=1+add_row, column=0, columnspan=1)
+
         self.warned = False
 
-        self.txtlbl.grid(row=0, column=0, columnspan=2)
-        self.entry.grid(row=1, column=0, padx=5, pady=5)
-        self.savebtn.grid(row=1, column=1, padx=5, pady=5)
-        self.status.grid(row=2, column=0, columnspan=2)
+        self.txtlbl.grid(row=0, column=0, padx=5, pady=5)
+        self.entry.grid(row=0, column=1, padx=5, pady=5)
+        
+        self.savebtn.grid(row=3+add_row, column=1, padx=5, pady=5)
+        self.status.grid(row=4+add_row, column=0, columnspan=2)
 
     def save(self, *args):
         name = self.entry.get()
-        cond = self.eq.isFolder(name) if self.record else self.eq.isState(name)
-        print(f'cond is {cond}')
-        if (not cond) or self.warned:
+        alreadyExists = self.eq.isFolder(name) if self.record else self.eq.isState(name)
+        try:
+            interval = int(self.interval_val.get())
+            isIntervalOk = True
+        except ValueError:
+            isIntervalOk = False
+
+        print(f'alreadyExists is {alreadyExists}')
+        if ((not alreadyExists) or self.warned) and isIntervalOk:
+            savefig = self.savefig_val.get()
+            savestate = self.savestate_val.get()
             if self.record:
-                self.mainpg.startRecord(name)
+                self.mainpg.startRecord(name, savefig=savefig, savestate=savestate, interval=interval)
             else:
-                self.eq.saveState(self.k_sol, name)
+                if savefig:
+                    self.mainpg.savefig(name)
+                if savestate:
+                    self.eq.saveState(self.k_sol, name)
             self.die()
         else:
-            self.statustext.set('Name already exists. Are you sure you want to overwrite it?')
-            self.warned = True
+            if alreadyExists:
+                self.statustext.set('Name already exists. Are you sure you want to overwrite it?')
+                self.warned = True
+            if not isIntervalOk:
+                self.statustext.set('Please enter a valid number (integer) for the interval.')
 
+    def record_figure(self):
+        pass
 
     def die(self):
         self.mainpg.play()
@@ -2075,12 +2122,27 @@ class MainPage(tk.Frame):
             self.img_recording = not self.img_recording
             self.i_record = 0
 
-    def startRecord(self, recordname):
-        self.controller.eq.startRecording(recordname)
+    def startRecord(self, recordname, interval=1, savefig=False, savestate=True):
         self.recording = True
+        self.recording_fig = savefig
+        self.recording_state = savestate
+        self.recording_interval = interval
+
+        callback = self.recordfig if savefig else None
+        self.controller.eq.startRecording(recordname, interval=interval, callback=callback, savestate=savestate)
+
         self.i_record = 0
         self.img_recording = True
         self.btn_record.configure(image=self.recordingimg)
+
+    def recordfig(self, name):
+        self.savefig(name)
+
+    def savefig(self, name):
+        # figure folder = fig/dim/eqname/
+        path = self.controller.eq.getFigureFolder() + name
+        print(f'Saved figure in {path}')
+        self.fig.savefig(path)
 
     def edit(self): # send signal to P Plot that is editing
         print(f'Edit clicked!, isEditing = {not self.isEditing}')

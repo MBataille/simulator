@@ -9,8 +9,11 @@ import os
 from solvers import INTEGRATION_METHODS
 
 DATAFOLDER = 'data/'
+FIGFOLDER = 'fig/'
 ALL_BOUNDARY_CONDITIONS = 'neumann periodic'.split(' ')
 RECORD_FILENAME = 'state'
+RECORD_FIGNAME = 'snap'
+
 T0_UPPER_BOUND = 1e6
 SOLVE_EVERY_TI = 60 # solve every 60 time steps
 
@@ -265,26 +268,46 @@ class Equation:
         folder = self.getDataFolder()
         return os.path.exists(folder + filename + '.npz')
 
-    def isFolder(self, foldername):
+    def isFolder(self, foldername, path=None):
+        if path is not None:
+            return os.path.exists(path)    
         folder = self.getDataFolder()
         return os.path.exists(folder + foldername)
 
-    def startRecording(self, foldername):
+    def startRecording(self, foldername, interval=1, callback=None, savestate=True):
         # assuming this folder doesn't exists yet
-        path = self.getDataFolder() + foldername
-        if not self.isFolder(foldername):
-            os.mkdir(path)
+        data_path = self.getDataFolder() + foldername
+        if savestate:
+            if not self.isFolder(foldername):
+                os.mkdir(data_path)
+        if callback is not None: # savefig
+            fig_path = self.getFigureFolder() + foldername
+            if not self.isFolder('', path=fig_path):
+                os.mkdir(fig_path)
+
+        self.recording_callback = callback
+        self.record_state = savestate
         self.k_recording = 0
         self.recording  = True
+        self.recording_interval = interval
         self.foldername_recording = foldername + '/'
 
     def getRecordStateName(self, k):
         return RECORD_FILENAME + f'_{k}' 
 
+    def getRecordFigName(self, k):
+        return RECORD_FIGNAME + f'_{k}' 
+
     def saveRecord(self):
         self.k_recording += 1
-        filename = self.foldername_recording + self.getRecordStateName(self.k_recording)
-        self.saveState(self.k_sol, filename)
+        if self.k_recording % self.recording_interval == 0:
+            filename = self.foldername_recording + self.getRecordStateName(self.k_recording)
+            if self.recording_callback is not None: 
+                figname = self.foldername_recording \
+                        + self.getRecordFigName(self.k_recording)
+                self.recording_callback(figname)
+            if self.record_state:
+                self.saveState(self.k_sol, filename)
 
     def stopRecording(self):
         self.k_recording = None
@@ -385,9 +408,11 @@ class Equation:
     def getDimFolder(self):
         return f'{self.dim}D/'
 
+    def getFigureFolder(self):
+        return FIGFOLDER + f'{self.dim}D/' + self.name + '/'
+
     def getDataFolder(self):
-        if self.dim == 0: return DATAFOLDER + f'{self.dim}D/' + self.name + '/'
-        return DATAFOLDER + self.name + '/'
+        return DATAFOLDER + f'{self.dim}D/' + self.name + '/'
 
     def getSavedStatesNames(self):
         """ Returns list of saved (files) and recorded (folders) states in data/equation_name/

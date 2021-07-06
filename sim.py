@@ -19,9 +19,10 @@ from windows import StartPage, MainPage
 
 from equations.allequations import ALL_EQUATIONS
 
-VERSION = '0.18'
+VERSION = '0.19'
 
 DATAFOLDER = 'data/'
+FIGFODLER = 'fig/'
 
 class SimApp(tk.Tk):
 	
@@ -75,17 +76,18 @@ class SimApp(tk.Tk):
 
 	def initDataFolders(self):
 		# check if data folder exists
-		if not os.path.exists(DATAFOLDER):
-			os.mkdir(DATAFOLDER)
+		for folder in (DATAFOLDER, FIGFODLER):
+			if not os.path.exists(folder):
+				os.mkdir(folder)
 
-		for dim in ALL_EQUATIONS:
-			DIMFOLDER = DATAFOLDER + f'{dim}D/'
-			if not os.path.exists(DIMFOLDER):
-				os.mkdir(DIMFOLDER)
-			for eqname in ALL_EQUATIONS[dim]:
-				path = DIMFOLDER if dim == 0 else DATAFOLDER
-				if not os.path.exists(path + eqname):
-					os.mkdir(path + eqname)
+			for dim in ALL_EQUATIONS:
+				DIMFOLDER = folder + f'{dim}D/'
+				if not os.path.exists(DIMFOLDER):
+					os.mkdir(DIMFOLDER)
+				for eqname in ALL_EQUATIONS[dim]:
+					path = DIMFOLDER
+					if not os.path.exists(path + eqname):
+						os.mkdir(path + eqname)
 
 	def getEqInitConds(self):
 		self.initConds =  self.eq.getInitialConditions(), self.eq.getSavedStatesNames()
