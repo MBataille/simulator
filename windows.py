@@ -1,3 +1,4 @@
+from numpy.lib.arraysetops import isin
 from equations.equation import SOLVE_EVERY_TI
 import tkinter as tk
 from tkinter import StringVar, ttk
@@ -86,7 +87,7 @@ class StartPage(tk.Frame):
             self.dim_listbox.insert(tk.END, f'Dim {dim}')
 
         self.dim_listbox.bind('<<ListboxSelect>>', self.change_select_dim)
-        self.dim_listbox.selection_set(0)
+        self.dim_listbox.selection_set(0); self.dim=0
         self.dim_listbox.grid(row=2, column=0)
 
         self.n_var = tk.StringVar(value='200')
@@ -777,7 +778,13 @@ class InspectorPhase(tk.Frame):
         self.parent = parent
 
         self.titlelbl = ttk.Label(self, text='Inspector: Phase Plot', font=LARGE_FONT)
-        self.titlelbl.grid(column=0, row=0, columnspan=3, padx=20, pady=10)
+        self.titlelbl.grid(column=0, row=0, columnspan=3, padx=10, pady=10)
+
+        self.is3D = False
+        if self.parent.controller.eq.n_fields >= 3:
+            self.val3D = tk.StringVar(value='3D')
+            self.btn3D = ttk.Button(self, textvariable=self.val3D, command=self.plot3D)
+            self.btn3D.grid(column=3, row=0, padx=5, sticky='e')
 
         self.y_minlbl = ttk.Label(self, text='y_min', font=MED_FONT)
         self.y_maxlbl = ttk.Label(self, text='y_max', font=MED_FONT)
@@ -874,6 +881,95 @@ class InspectorPhase(tk.Frame):
         self.yfieldcbox.current(1)
         self.yfieldcbox.grid(row=6, column=3, padx=5, pady=5)
 
+    def inspector_3D_to_2D(self):
+        self.val3D.set('3D')
+        self.is3D = False
+
+        # Remove zmin zmax
+        for widget in (self.z_maxlbl, self.z_minlbl, self.z_minval, self.z_maxval, self.zfieldcbox, self.zfieldlbl):
+            widget.grid_forget()
+
+    def inspector_2D_to_3D(self):
+        self.val3D.set('2D')
+        self.is3D = True
+
+        # Add zmin zmax to inspector
+        self.z_minlbl = ttk.Label(self, text='z_min', font=MED_FONT)
+        self.z_maxlbl = ttk.Label(self, text='z_max', font=MED_FONT)
+
+        self.z_minlbl.grid(column=4, row=2)
+        self.z_maxlbl.grid(column=4, row=1)
+
+        z_min, z_max = -1, 1
+
+        self.z_minvar = tk.StringVar(value=str(z_min))
+
+        self.z_maxvar = tk.StringVar(value=str(z_max))
+
+        self.z_minval = ttk.Entry(self, textvariable=self.z_minvar, font=MED_FONT, width=15)
+        self.z_maxval = ttk.Entry(self, textvariable=self.z_maxvar, font=MED_FONT, width=15)
+
+        self.z_minval.grid(column=5, row=2, padx=10)
+        self.z_maxval.grid(column=5, row=1, padx=10)
+
+        self.zfieldlbl = ttk.Label(self, text='z axis:', font=MED_FONT)
+        self.zfieldlbl.grid(row=6, column=4, padx=5, pady=5)
+        
+        self.zfieldcbox = ttk.Combobox(self, state='readonly', width=10)
+        fieldNames = self.parent.controller.eq.fieldNames
+        self.zfieldcbox['values'] = fieldNames
+        self.zfieldcbox.bind('<<ComboboxSelected>>', self.change_z_field)
+        self.zfieldcbox.current(2)
+        self.zfieldcbox.grid(row=6, column=5, padx=5, pady=5)
+
+    def plot3D(self):
+        if self.is3D:
+        
+            self.inspector_3D_to_2D()
+
+            # Remove plot
+            fig = self.pplot.fig
+            ax = self.pplot.ax
+            fig.delaxes(ax)
+
+            if isinstance(self.pplot.parent, MainPage):
+                new_ax = fig.add_subplot(211)
+            else:
+                new_ax = fig.add_subplot(111)
+            
+            new_pplot = PhasePlot(fig, new_ax, self.pplot.mainpg, parent=self.pplot.parent)
+
+            if isinstance(self.pplot.parent, MainPage):
+                self.pplot.mainpg.plots[0] = new_pplot
+            else:
+                self.pplot.parent.plot = new_pplot
+            
+            self.changePlot(new_pplot)
+
+        else:
+
+            # Improve 2D plot to 3D plot
+            fig = self.pplot.fig
+            ax = self.pplot.ax
+            fig.delaxes(ax)
+
+            if isinstance(self.pplot.parent, MainPage):
+                ax3D = fig.add_subplot(211, projection='3d')
+            else:
+                ax3D = fig.add_subplot(111, projection='3d')
+            
+            new_pplot = Phase3DPlot(fig, ax3D, self.pplot.mainpg, parent=self.pplot.parent)
+
+            self.inspector_2D_to_3D()
+
+            if isinstance(self.pplot.parent, MainPage):
+                self.pplot.mainpg.plots[0] = new_pplot
+            else:
+                self.pplot.parent.plot = new_pplot
+
+            self.changePlot(new_pplot)
+
+
     def change_x_field(self, event):
         new_x_field = self.xfieldcbox.current()
         if new_x_field != self.pplot.x_field:
@@ -883,13 +979,20 @@ class InspectorPhase(tk.Frame):
         new_y_field = self.yfieldcbox.current()
         if new_y_field != self.pplot.y_field:
             self.pplot.changeShownFields(new_y_field=new_y_field)
+    
+    def change_z_field(self, event):
+        new_z_field = self.zfieldcbox.current()
+        if new_z_field != self.pplot.z_field:
+            self.pplot.changeShownFields(new_z_field=new_z_field)
 
     def initPhasePlot(self, pplot):
         self.pplot = pplot
         self.autotxt.set('Auto' if self.pplot.auto_lim else 'Manual')
-        xlims, ylims = self.pplot.get_ax_lims()
-        self.set_xlim(*xlims)
-        self.set_ylim(*ylims)
+        lims = self.pplot.get_ax_lims()
+        self.set_xlim(*lims[0])
+        self.set_ylim(*lims[1])
+        if self.is3D:
+            self.set_zlim(*lims[2])
 
     def update_xy_fields(self):
         x_field = self.pplot.x_field
@@ -897,7 +1000,17 @@ class InspectorPhase(tk.Frame):
         self.xfieldcbox.current(x_field)
         self.yfieldcbox.current(y_field)
 
+        if self.is3D:
+            z_field = self.pplot.z_field
+            self.zfieldcbox.current(z_field)
+
     def changePlot(self, pplot):
+        if isinstance(pplot, PhasePlot) and self.is3D:
+            self.inspector_3D_to_2D()
+
+        if isinstance(pplot, Phase3DPlot) and not self.is3D:
+            self.inspector_2D_to_3D()
+
         self.initPhasePlot(pplot)
         self.update_xy_fields()
 
@@ -941,6 +1054,15 @@ class InspectorPhase(tk.Frame):
         except ValueError:
             return None, None
 
+    def get_zlims(self):
+        if not self.is3D: return
+        try:
+            z_min = float(self.z_minvar.get())
+            z_max = float(self.z_maxvar.get())
+            return z_min, z_max
+        except ValueError:
+            return None, None
+
     def set_ylim(self, ymin, ymax):
         self.y_minvar.set('{:.5f}'.format(ymin))
         self.y_maxvar.set('{:.5f}'.format(ymax))
@@ -948,6 +1070,11 @@ class InspectorPhase(tk.Frame):
     def set_xlim(self, xmin, xmax):
         self.x_minvar.set('{:.5f}'.format(xmin))
         self.x_maxvar.set('{:.5f}'.format(xmax))
+
+    def set_zlim(self, zmin, zmax):
+        if not self.is3D: return
+        self.z_minvar.set('{:.5f}'.format(zmin))
+        self.z_maxvar.set('{:.5f}'.format(zmax))
 
     def activate(self):
         self.grid(row=0, column=0)
@@ -1561,6 +1688,8 @@ class PlotWindow(tk.Frame):
         elif kind == PROFILE:
             PlotType = ProfilePlot
         self.plot = PlotType(self.fig, self.ax, self.mainpg)
+        if kind == PHASEPLOT:
+            self.plot.parent = self
 
     def start_anim(self):
         event_source = self.mainpg.ani.event_source
@@ -1718,8 +1847,8 @@ class TemporalPlot:
     def getAnimIterables(self):
         return self.lines
 
-class PhasePlot:
-    def __init__(self, fig, ax, mainpg):
+class Phase3DPlot:
+    def __init__(self, fig, ax, mainpg, parent=None):
         self.fig = fig
         self.ax = ax
         self.mainpg = mainpg
@@ -1727,6 +1856,167 @@ class PhasePlot:
         self.controller = mainpg.controller
         self.eq = self.controller.eq
         self.clicked = False
+        if parent is not None:
+            self.parent = parent
+
+        self.x_field = 0
+        self.y_field = 1
+        self.z_field = 2
+
+        self.kind = PHASEPLOT
+
+        self.k_reset = 8*SOLVE_EVERY_TI
+
+        self.resetXsandYs()
+        self.lines = []
+        self.pts = []
+
+        self.auto_lim = True
+
+        self.k_pp = 0
+        self.set_field_label()
+
+    def set_field_label(self):
+        xlabel = self.eq.fieldNames[self.x_field]
+        ylabel = self.eq.fieldNames[self.y_field]
+        zlabel = self.eq.fieldNames[self.z_field]
+        self.set_label(xlabel, ylabel, zlabel)
+
+    def changeShownFields(self, new_x_field=None, new_y_field=None, new_z_field=None):
+        if (new_x_field is None) and (new_y_field is None) and (new_z_field is None): return
+        if new_x_field is not None:
+            self.x_field = new_x_field
+        if new_y_field is not None:
+            self.y_field = new_y_field
+        if new_z_field is not None:
+            self.z_field = new_z_field
+        self.set_field_label()
+        self.resetXsandYs()
+        self.clear()
+
+    def getSelectedUnit(self):
+        return self.phase_inspector.parent.temporal.getUnit()
+
+    def set_label(self, xlabel, ylabel, zlabel):
+        self.ax.set_xlabel(xlabel)
+        self.ax.set_ylabel(ylabel)
+        self.ax.set_zlabel(zlabel)
+
+    def move_click(self, event):
+        pass
+
+    def off_click(self, event):
+        pass
+
+    def on_click(self, event):
+        if event.inaxes != self.ax: return
+        self.mainpg.setActivePlot(self)
+
+    def plot_fields(self):
+        if len(self.xs) == 0: return
+        self.ax.clear()
+        self.lines = []
+        self.pts = []
+        for i in range(self.xs.shape[0]):
+            line, = self.ax.plot(self.xs[i, :self.k_pp], self.ys[i, :self.k_pp], self.zs[i, :self.k_pp])
+            self.lines.append(line)
+        unit = self.getSelectedUnit()
+        line, = self.ax.plot([self.xs[unit, self.k_pp-1]], [self.ys[unit, self.k_pp-1]], [self.zs[unit, self.k_pp-1]], 'ko')
+        self.pts.append(line)
+
+    def update_fields(self):
+        if len(self.lines) == 0: return
+        for i in range(self.xs.shape[0]):
+            self.lines[i].set_data_3d(self.xs[i, :self.k_pp],
+                                    self.ys[i, :self.k_pp],
+                                    self.zs[i, :self.k_pp])
+
+        unit = self.getSelectedUnit()
+
+        self.pts[0].set_data_3d([self.xs[unit, self.k_pp-1]], 
+                                [self.ys[unit, self.k_pp-1]],
+                                [self.zs[unit, self.k_pp-1]])
+
+
+    def resetXsandYs(self):
+        self.xs = np.zeros((self.eq.getN(), self.k_reset))
+        self.ys = np.zeros((self.eq.getN(), self.k_reset))
+        self.zs = np.zeros((self.eq.getN(), self.k_reset))
+
+    def get_ax_lims(self):
+        return self.ax.get_xlim(), self.ax.get_ylim(), self.ax.get_zlim()
+
+    def isInspectorActive(self):
+        return self.phase_inspector.pplot == self
+
+    def set_lims(self, xlims, ylims, zlims):
+        xmin, xmax = xlims
+        ymin, ymax = ylims
+        zmin, zmax = zlims
+
+        if xmin is not None:
+            self.ax.set_xlim(xmin, xmax)
+        
+        if ymin is not None:
+            self.ax.set_ylim(ymin, ymax)
+
+        if zmin is not None:
+            self.ax.set_zlim(zmin, zmax)
+
+    def manual_update_lim(self):
+        if self.isInspectorActive():
+            self.set_lims(self.phase_inspector.get_xlims(), self.phase_inspector.get_ylims(), self.phase_inspector.get_zlims())
+   
+    def auto_update_lim(self):
+        if len(self.xs) == 0: return
+        xmin, xmax = self.xs.min(), self.xs.max()
+        ymin, ymax = self.ys.min(), self.ys.max()
+        zmin, zmax = self.zs.min(), self.zs.max()
+
+        self.ax.set_xlim(d10p(xmin), i10p(xmax))
+        self.ax.set_ylim(d10p(ymin), i10p(ymax))
+        self.ax.set_zlim(d10p(zmin), i10p(zmax))
+
+    def update(self):
+        Fields = self.eq.getCurrentFields()
+        # print(len(Fields), len(Fields[0]), self.eq.getN())
+        if len(Fields[self.x_field]) != self.xs.shape[0]:
+            self.clear() # resets Xs and Ys
+        self.xs[:, self.k_pp] = Fields[self.x_field]
+        self.ys[:, self.k_pp] = Fields[self.y_field]
+        self.zs[:, self.k_pp] = Fields[self.z_field]
+        self.k_pp = (self.k_pp + 1) % self.k_reset
+        if self.k_pp == 1:
+            self.plot_fields()
+        else:
+            self.update_fields()
+        if self.auto_lim:
+            self.auto_update_lim()
+        else:
+            self.manual_update_lim()
+        # update lines
+        return self.lines + self.pts
+
+    def clear(self):
+        self.resetXsandYs()
+        self.k_pp = 0
+
+    def getAnimIterables(self):
+        return self.lines + self.pts
+
+
+class PhasePlot:
+    def __init__(self, fig, ax, mainpg, parent=None):
+        self.fig = fig
+        self.ax = ax
+        self.mainpg = mainpg
+        self.phase_inspector = mainpg.inspector.phase
+        self.controller = mainpg.controller
+        self.eq = self.controller.eq
+        self.clicked = False
+
+        if parent is not None:
+            self.parent=parent
 
         self.x_field = 0
         self.y_field = 1
@@ -2042,7 +2332,7 @@ class MainPage(tk.Frame):
             self.eqX = eq.x
 
         elif self.controller.eq.dim == 0:
-            self.plots = [PhasePlot(self.fig, self.ax, self), \
+            self.plots = [PhasePlot(self.fig, self.ax, self, parent=self), \
                 TemporalPlot(self.fig, self.ax2, self)]
             self.inspector.phase.initPhasePlot(self.plots[0])
             self.inspector.temporal.initTemporalPlot(self.plots[1])
