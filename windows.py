@@ -1207,7 +1207,8 @@ class EntryWindow:
         name = self.entry.get()
         alreadyExists = self.eq.isFolder(name) if self.record else self.eq.isState(name)
         try:
-            interval = int(self.interval_val.get())
+            if self.record:
+                interval = int(self.interval_val.get())
             isIntervalOk = True
         except ValueError:
             isIntervalOk = False
