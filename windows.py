@@ -165,7 +165,7 @@ class StartPage(tk.Frame):
         if filtr is not None:
             initconds = [[initcond, i] for i, initcond in enumerate(initconds) if filtr in initcond]
         else:
-            initconds = [[inticond, i] for i, initcond in enumerate(initconds)]
+            initconds = [[initcond, i] for i, initcond in enumerate(initconds)]
         self.list_initconds = initconds
         for initcond, i in initconds:
             self.initcond_listbox.insert(tk.END, initcond)
