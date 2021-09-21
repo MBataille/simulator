@@ -163,8 +163,11 @@ class StartPage(tk.Frame):
         self.clear_listbox(self.initcond_listbox)
         initconds = self.controller.getEqInitConds()
         if filtr is not None:
-            initconds = [initcond for initcond in initconds if filtr in initcond]
-        for initcond in initconds:
+            initconds = [[initcond, i] for i, initcond in enumerate(initconds) if filtr in initcond]
+        else:
+            initconds = [[inticond, i] for i, initcond in enumerate(initconds)]
+        self.list_initconds = initconds
+        for initcond, i in initconds:
             self.initcond_listbox.insert(tk.END, initcond)
         self.initcond_listbox.selection_set(0)
 
@@ -200,7 +203,8 @@ class StartPage(tk.Frame):
     def change_select_ic(self, event):
         selection = event.widget.curselection()
         if selection:
-            index = selection[0]
+            i = selection[0]
+            index = self.list_initconds[i][1]
             if not self.controller.initCond_isMethod(index):
                 self.controller.setEqInitCond(index)
                 Ni = self.controller.getEqInitCond_N()
