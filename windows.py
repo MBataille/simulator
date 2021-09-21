@@ -94,6 +94,11 @@ class StartPage(tk.Frame):
         self.n_ent = tk.Entry(self, textvariable=self.n_var)
         self.n_ent.grid(row=3, column=1, padx=5, pady=5, sticky='w')
 
+        self.search_var = tk.StringVar(value='search')
+        self.search_var.trace_add('write', self.search_callback)
+        self.search_ent = tk.Entry(self, textvariable=self.search_var)
+        self.search_ent.grid(row=3, column=2, padx=5, pady=5, sticky='w')
+
         self.eq_listbox = tk.Listbox(self)
         self.fill_eq_listbox(0, init=True)
 
@@ -108,7 +113,7 @@ class StartPage(tk.Frame):
         self.eq_listbox.bind('<<ListboxSelect>>', self.change_select_eq)
         self.eq_listbox.grid(row=2, column=1, padx=5, pady=5)
 
-        self.initcond_listbox = tk.Listbox(self)
+        self.initcond_listbox = tk.Listbox(self, width=30)
         self.initcond_listbox.bind('<<ListboxSelect>>', self.change_select_ic)
         self.fill_initcond_listbox()       
 
@@ -149,9 +154,16 @@ class StartPage(tk.Frame):
         if last >= 0:
             lbox.delete(0, last=last)
 
-    def fill_initcond_listbox(self):
+    def search_callback(self, *args):
+        search_string = self.search_var.get()
+        if search_string == 'search' or search_string == '': return
+        self.fill_initcond_listbox(filtr=search_string)
+
+    def fill_initcond_listbox(self, filtr=None):
         self.clear_listbox(self.initcond_listbox)
         initconds = self.controller.getEqInitConds()
+        if filtr is not None:
+            initconds = [initcond for initcond in initconds if filtr in initcond]
         for initcond in initconds:
             self.initcond_listbox.insert(tk.END, initcond)
         self.initcond_listbox.selection_set(0)
