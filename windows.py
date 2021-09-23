@@ -516,6 +516,15 @@ class InspectorSpatiotemporal(tk.Frame):
         self.choosefieldcbox.current(0)
         self.choosefieldcbox.grid(column=1, row=4, padx=10, pady=10)
 
+        self.chooseupdtlbl = ttk.Label(self, text='Update: ', font=MED_FONT)
+        self.chooseupdtlbl.grid(column=2, row=4, padx=10, pady=10)
+
+        self.chooseupdtcbox = ttk.Combobox(self, state='readonly', width=10)
+        self.chooseupdtcbox['values'] = ['always'] + self.parent.controller.eq.st_update_optns
+        self.chooseupdtcbox.bind('<<ComboboxSelected>>', self.change_update_optn)
+        self.chooseupdtcbox.current(0)
+        self.chooseupdtcbox.grid(column=3, row=4, padx=10, pady=10)
+        
         self.choosecolorlbl = ttk.Label(self, text='Colormap: ', font=MED_FONT)
         self.choosecolorlbl.grid(column=0, row=5, padx=10, pady=10)
 
@@ -601,6 +610,15 @@ class InspectorSpatiotemporal(tk.Frame):
     def change_cmap(self, event): # same sis // prep
         new_active_cmap = self.choosecolorbox.current()
         self.stplot.setCurrentColormap(new_active_cmap)
+
+    def change_update_optn(self, event):
+        new_optn = self.chooseupdtcbox.current()
+        if new_optn == 0:
+            self.stplot.init_default()
+        elif new_optn == 1: # 'strobe'
+            self.stplot.init_strobe()
+        elif new_optn == 2:
+            self.stplot.init_poincare()
 
     def activate(self):
         self.grid(row=0, column=0)
@@ -1534,6 +1552,8 @@ class SpatioTemporalPlot:
         self.active_field_indx = 0
         self.current_cmap = [0] * (self.eq.n_fields + self.eq.n_aux_fields)
 
+        self.update_st_func = self.update_st_default
+
         self.imvals = np.zeros((self.st_rows, self.eq.getN()))
         self.plot()
 
@@ -1642,16 +1662,58 @@ class SpatioTemporalPlot:
     def getAnimIterables(self):
         return [self.im]
 
+    def init_default(self):
+        self.reset()
+        self.update_st_func = self.update_st_default
+
+    def init_strobe(self):
+        self.reset()
+        v = self.eq.getCurrentParams()
+        self.k_strobe = 0
+        self.N_strobe = int(round(2 * np.pi / v['omega'] / v['dt']))
+        self.update_st_func = self.update_strobe
+
+    def update_strobe(self):
+        if self.k_strobe == 0:
+            self.k_strobe += 1
+            return True
+        self.k_strobe = (self.k_strobe + 1) % self.N_strobe
+        return False
+
+    def init_poincare(self):
+        self.reset()
+        last_field = self.getActiveField()
+        cent, left, right = self.eq.getCurrentMarkers(indices=True) # centroid, left, right
+        print(left, right)
+        self.last_avg = np.mean(np.append(last_field[:left], last_field[right:]))
+        self.update_st_func = self.update_poincare
+
+    def update_poincare(self):
+        new_field = self.getActiveField()
+        cent, left, right = self.eq.getCurrentMarkers(indices=True)
+        new_avg = np.mean(np.append(new_field[:left], new_field[right:]))
+
+        if new_avg * self.last_avg < 0:
+            self.last_avg = new_avg
+            return True
+
+        self.last_avg = new_avg
+        return False
+
+    def update_st_default(self):
+        return True
+
     def update(self):
-        self.imvals[self.k_st, :] = self.getActiveField()
-        self.im.set_data(self.imvals)
+        if self.update_st_func():
+            self.imvals[self.k_st, :] = self.getActiveField()
+            self.im.set_data(self.imvals)
+            self.k_st = (self.k_st + 1) % self.st_rows
 
         if self.auto_lim:
             self.auto_update()
         else:
             self.manual_update()
 
-        self.k_st = (self.k_st + 1) % self.st_rows
         return self.im
 
 

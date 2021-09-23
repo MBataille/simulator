@@ -25,7 +25,11 @@ class Duffing(Equation):
 					'kappa' : (0, 1), 
 					'delta': (0, 1)}
 
+
 		Equation.__init__(self, 'Duffing', initParams, dim=1, n_fields=2, N=200, fieldNames=['x', 'dx/dt'], auxFieldNames=['theta', 'abs z'], initRange=initRange)
+
+		self.st_update_optns = ['stroboscopically', 'poincare section']
+
 
 	def initAuxFields(self):
 		T = self.sol.shape[1]
@@ -96,12 +100,14 @@ class Duffing(Equation):
 		X = A * np.exp(-x**2/(2*sigma**2))
 		self.setInitialCondition((X, dXdt))
 
-	def getMarkers(self, X, dXdt, theta, absz):
+	def getMarkers(self, X, dXdt, theta, absz, indices=False):
 		f = (1 - absz)**2
 		x = self.getX()
 		centroid = simps(f*x, x=x)/simps(f, x=x)
 		y_interface = (absz.max() + absz.min())/2
 		inds = np.argwhere(absz < y_interface)
-		left_interface, right_interface = x[inds[0]], x[inds[-1]]
 		# left_interface = x[np.argwhere(absz < 0.9)[0]]
+		if indices:
+			return [np.argwhere(x >= centroid)[-1][0], inds[0][0], inds[-1][0]]
+		left_interface, right_interface = x[inds[0]], x[inds[-1]]
 		return [centroid, left_interface, right_interface]

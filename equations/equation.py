@@ -68,6 +68,8 @@ class Equation:
         self.n_fields = n_fields
         self.n_aux_fields = len(auxFieldNames)
 
+        self.st_update_optns = []
+
         # each field will have N points
         self.setNi(N)
 
@@ -118,11 +120,11 @@ class Equation:
     def getAuxFields(self, *args):
         return []
 
-    def getCurrentMarkers(self):
-        if self.last_update == -1 or self.last_update != self.k_sol:
+    def getCurrentMarkers(self, indices=False):
+        if self.last_update == -1 or self.last_update != self.k_sol or indices:
             fields = self.getCurrentFields()
             auxfields = self.getCurrentAuxFields()
-            return self.getMarkers(*fields, *auxfields)
+            return self.getMarkers(*fields, *auxfields, indices=indices)
         return self.currentMarkers
 
     def getMarkers(self, *args):
