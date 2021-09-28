@@ -19,7 +19,7 @@ from windows import StartPage, MainPage
 
 from equations.allequations import ALL_EQUATIONS
 
-VERSION = '0.20'
+VERSION = '0.21'
 
 DATAFOLDER = 'data/'
 FIGFODLER = 'fig/'
@@ -89,7 +89,7 @@ class SimApp(tk.Tk):
 					if not os.path.exists(path + eqname):
 						os.mkdir(path + eqname)
 
-	def getEqInitConds(self):
+	def getEqInitConds(self, indx=False):
 		self.initConds =  self.eq.getInitialConditions(), self.eq.getSavedStatesNames()
 		return self.initConds[0] + self.initConds[1]
 
