@@ -313,17 +313,22 @@ class Equation:
         self.k_recording = None
         self.path_recording = None
         self.recording = False
-    def saveState(self, k, filename, folder=None):
+    def saveState(self, k, filename, folder=None, mfolder=None):
         if folder is None:
             folder = self.getDataFolder()
+        if mfolder is not None:
+            folder += mfolder
         _vals = self.sol[:, k]
         _pnames, _pvals = self.paramsToArray(k=k)
 
         np.savez_compressed(folder + filename + '.npz', vals=_vals, pnames=_pnames, pvals=_pvals)
 
-    def loadState(self, filename):
+    def loadState(self, filename, mfolder=None):
         folder = self.getDataFolder()
 
+        if mfolder is not None:
+            folder += mfolder
+        
         if os.path.isdir(folder + filename):
             self.loadState(filename + '/' + self.getRecordStateName(1))
             return
