@@ -524,6 +524,14 @@ class InspectorSpatiotemporal(tk.Frame):
         self.chooseupdtcbox.bind('<<ComboboxSelected>>', self.change_update_optn)
         self.chooseupdtcbox.current(0)
         self.chooseupdtcbox.grid(column=3, row=4, padx=10, pady=10)
+
+        self.Tlbl = ttk.Label(self, text="T", font=MED_FONT)
+        self.Tlbl.grid(column=4, row=4, padx=10, pady=10)
+
+        self.Tvar = tk.StringVar()
+        self.Tentry = ttk.Entry(self, textvariable=self.Tvar, width=10, font=MED_FONT, state=tk.DISABLED)
+        self.Tentry.grid(column=5, row=4, padx=10, pady=10)
+
         
         self.choosecolorlbl = ttk.Label(self, text='Colormap: ', font=MED_FONT)
         self.choosecolorlbl.grid(column=0, row=5, padx=10, pady=10)
@@ -537,6 +545,14 @@ class InspectorSpatiotemporal(tk.Frame):
     def initSpatioTempPlot(self, stplot):
         self.stplot = stplot
         self.setIm(stplot.im)
+
+    def get_T_update(self):
+        T = self.Tvar.get()
+        try:
+            T = float(T)
+            return T
+        except ValueError:
+            return None
 
     def changeSTPlot(self, stplot):
         self.stplot = stplot
@@ -1664,16 +1680,35 @@ class SpatioTemporalPlot:
 
     def init_default(self):
         self.reset()
+        v = self.eq.getCurrentParams()
+        self.spatiotemp_inspector.Tentry.configure(state='disabled')
+        self.spatiotemp_inspector.Tvar.set(v['dt'])
         self.update_st_func = self.update_st_default
 
     def init_strobe(self):
         self.reset()
         v = self.eq.getCurrentParams()
         self.k_strobe = 0
-        self.N_strobe = int(round(2 * np.pi / v['omega'] / v['dt']))
+        if 'omega' in v:
+            T_strobe = 2 * np.pi / v['omega']
+        else:
+            T_strobe = 20
+        self.spatiotemp_inspector.Tentry.configure(state='enabled')
+        self.spatiotemp_inspector.Tvar.set(T_strobe)
+        self.N_strobe = int(round(T_strobe / v['dt']))
         self.update_st_func = self.update_strobe
 
     def update_strobe(self):
+        v = self.eq.getCurrentParams()
+        T_strobe = self.spatiotemp_inspector.get_T_update()
+        if T_strobe is None: 
+            N_strobe = self.N_strobe
+        else:
+            N_strobe = int(round(T_strobe / v['dt']))
+        if N_strobe != self.N_strobe:
+            self.k_strobe = 0
+            self.N_strobe = N_strobe
+            self.reset()
         if self.k_strobe == 0:
             self.k_strobe += 1
             return True
