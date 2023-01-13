@@ -325,11 +325,14 @@ class Equation:
 
         np.savez_compressed(folder + filename + '.npz', vals=_vals, pnames=_pnames, pvals=_pvals)
 
-    def loadState(self, filename, mfolder=None):
+    def loadState(self, filename, mfolder=None, outside_folder=None):
         folder = self.getDataFolder()
 
         if mfolder is not None:
             folder += mfolder
+        
+        if outside_folder is not None:
+            folder = outside_folder
         
         if os.path.isdir(folder + filename):
             self.loadState(filename + '/' + self.getRecordStateName(1))

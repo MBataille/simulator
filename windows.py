@@ -1145,19 +1145,17 @@ class InspectorWindow(tk.Frame):
         self.mainpg = mainpg
         self.controller = controller
 
-        self.profile = InspectorProfile(self)
-        self.spatiotemp = InspectorSpatiotemporal(self)
-
-        self.temporal = InspectorTemporal(self)
-        self.phase = InspectorPhase(self)
-
         #self.profile.grid(row=0, column=0)
         #self.spatiotemp.grid(row=0, column=0)
 
         self.activeFrame = None
         if self.controller.eq.dim == 1:
+            self.profile = InspectorProfile(self)
+            self.spatiotemp = InspectorSpatiotemporal(self)
             self.showProfile()
         elif self.controller.eq.dim == 0:
+            self.temporal = InspectorTemporal(self)
+            self.phase = InspectorPhase(self)
             self.showPhase()
         self.grid(row=0, column=0)
 

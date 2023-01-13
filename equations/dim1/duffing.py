@@ -100,6 +100,7 @@ class Duffing(Equation):
 		X = A * np.exp(-x**2/(2*sigma**2))
 		self.setInitialCondition((X, dXdt))
 
+
 	def getMarkers(self, X, dXdt, theta, absz, indices=False):
 		f = (1 - absz)**2
 		x = self.getX()

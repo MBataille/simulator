@@ -10,7 +10,7 @@ class TuringSwiftHohenberg(Equation):
             'eps': -0.22,
             'nu': 1
         }
-        Equation.__init__(self, 'Turing-Swift-Hohenberg', initParams, fieldNames=['u'])
+        Equation.__init__(self, 'Turing-Swift-Hohenberg', initParams, fieldNames=['u'], dim=1)
 
     def rhs(self, t, u):
         v = self.getCurrentParams()
