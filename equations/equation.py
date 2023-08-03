@@ -341,7 +341,8 @@ class Equation:
         data = np.load(folder + filename + '.npz')
         #  print(data['vals'], data['pvals'], data['pnames'])
         self.setInitialCondition(data['vals'])
-        self.Ni = int(data['pvals'][0])
+        Ni = int(data['pvals'][0])
+        self.setNi(Ni)
         self.N = int(self.Ni * self.n_fields)
         if 't' in data['pnames']:
             self.t0 = data['pvals'][1]

@@ -1601,8 +1601,8 @@ class SpatioTemporalPlot:
         return self.eq.getCurrentField(self.active_field_indx)
 
     def replot(self):
-        self.ax.clear()
         self.colorbar.remove()
+        self.ax.clear()
         self.plot()
 
     def isSpatioTempInspectorActive(self):

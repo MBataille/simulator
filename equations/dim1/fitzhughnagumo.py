@@ -19,7 +19,7 @@ class FitzHughNagumo(Equation):
 		dx = v['dx']; I = v['I']; a = v['a']; b = v['b']; tau = v['tau']
 
 		dV = V - V**3 / 3 - W + I + self.Laplace1D(V)
-		dW = 1/tau * (V + a - b * W + self.Laplace1D(W))
+		dW = 1/tau * (V + a - b * W) # + self.Laplace1D(W))
 
 		return (dV, dW)
 
