@@ -56,7 +56,7 @@ class LugiatoLefeverEquation(Equation):
                     'S': 2.8,
                     'beta2': -1}
 
-        Equation.__init__(self, 'LugiatoLefever', initParams, dim=1, n_fields=2, N=200, fieldNames=['Re A', 'Im A'], auxFieldNames=['mod A'])
+        Equation.__init__(self, 'LugiatoLefever', initParams, dim=1, n_fields=2, N=200, fieldNames=['Re A', 'Im A'], auxFieldNames=['mod A', 'arg A'])
 
     def rhs(self, t, Re, Im):
         v = self.getCurrentParams()
@@ -89,7 +89,7 @@ class LugiatoLefeverEquation(Equation):
         return jac_homo + beta2 * self.Dxx
 
     def getAuxFields(self, Re, Im):
-        return [Re * Re + Im * Im]
+        return [Re * Re + Im * Im, np.angle(Re + 1j * Im)]
     
     def solve(self, t=None):
         if self.t0 > T0_UPPER_BOUND:
