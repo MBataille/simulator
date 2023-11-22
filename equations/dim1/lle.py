@@ -54,7 +54,8 @@ class LugiatoLefeverEquation(Equation):
                     'dx': 0.25, 
                     'Delta': 6.25,
                     'S': 2.8,
-                    'beta2': -1}
+                    'beta2': -1,
+                    'alpha': 0.1}
 
         Equation.__init__(self, 'LugiatoLefever', initParams, dim=1, n_fields=2, N=200, fieldNames=['Re A', 'Im A'], auxFieldNames=['mod A'])
 
@@ -63,8 +64,11 @@ class LugiatoLefeverEquation(Equation):
 
         A = Re + 1j * Im
         Delta = v['Delta']; S = v['S']; beta2 = v['beta2']
+        alpha = v['alpha']
+        laplace = better_laplace(A, v['dx'])
 
-        dA = S - (1 + 1j * Delta) * A - 1j * beta2 * better_laplace(A, v['dx']) + 1j * (Re ** 2 + Im ** 2) * A
+        dA = S - (1 + 1j * Delta) * A - 1j * beta2 * laplace + alpha * laplace \
+             + + 1j * (Re ** 2 + Im ** 2) * A
         return dA.real, dA.imag
     
     def setNi(self, Ni):
@@ -101,5 +105,5 @@ class LugiatoLefeverEquation(Equation):
         else:
             t += self.t0
         # print(t, dt, self.initCond)
-        with threadpool_limits(limits=1):
+        with threadpool_limits(limits=4):
             self.sol = solve_ivp(self.wrhs, (t[0], t[-1]), self.initCond, method='Radau', t_eval=t, jac=self.jac).y
